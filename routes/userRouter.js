@@ -60,9 +60,8 @@ userRouter.post("/login", async (req, res) => {
         if (!user) {
             return res.status(404).json("user not found")
         }
-        // unhashing password
+        // checking if password matches
         const password = req.body.password
-
         const is_match = await bcrypt.compare(password, user.password_hash);
         if (!is_match) {
             return res.status(401).json("password is not correct")
