@@ -55,7 +55,7 @@ userRouter.post("/login", async (req, res) => {
         if (!req.body.email || !req.body.password) {
             return res.status(400).json("empty erea's")
         }
-        // finding the user with password
+        // finding the user with email
         const user = await User.findOne({email: req.body.email})
         if (!user) {
             return res.status(404).json("user not found")
