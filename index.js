@@ -1,5 +1,6 @@
 import express from "express";
 import mongoose from "mongoose";
+import router from "./routes/routeRouter.js"
 // import router from "./routes/routeRouter.js"
 import contentItemRouter from "./routes/contentItemRouter.js"
 import dotenv from "dotenv";
@@ -35,6 +36,7 @@ try {
     app.use(express.urlencoded())
    // app.use("/plants", router)
     app.use("/api/content-items", contentItemRouter)
+    app.use("/", router)
 } catch (e) {
     app.use((req, res) => {
         res.status(500).send("Database doesnt respond")
