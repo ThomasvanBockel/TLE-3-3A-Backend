@@ -35,7 +35,6 @@ try {
     await mongoose.connect(process.env.MONGODB_URL)
     app.use(express.urlencoded())
    // app.use("/plants", router)
-    app.use("/api/content-items", contentItemRouter)
     app.use("/", router)
 } catch (e) {
     app.use((req, res) => {
