@@ -7,17 +7,16 @@ const userSchema = new mongoose.Schema(
 
         first_name: {type: String, required: true},
         last_name: {type: String, required: true},
-        email: {type: String, required: true, unique: true, lowercase: true, trim: true},
+        gender: {type: String, required: false},
+        email: {type: String, required: true, unique: true},
         password_hash: {type: String, required: true},
 
         birth_date: {type: Date, required: false},
         phone_number: {type: String, required: false},
-        gender: {type: String, required: false},
-        bsn_number: {type: Number, required: false},
 
-        is_admin: {type: Boolean, required: true, default: false},
-
-        personalization_enabled: {type: Boolean, required: true, default: true},
+        is_admin: {type: Boolean, required: true},
+        personalization_enabled: {type: Boolean, required: true},
+        bsn: {type: String, required: true}
     },
     {
         timestamps: {createdAt: "created_at", updatedAt: "updated_at"},
@@ -26,7 +25,6 @@ const userSchema = new mongoose.Schema(
             versionKey: false,
             transform: (doc, ret) => {
                 delete ret._id;
-                delete ret.id;
                 delete ret.password_hash;
             },
         },
