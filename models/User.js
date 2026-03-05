@@ -12,7 +12,8 @@ const userSchema = new mongoose.Schema(
 
         birth_date: {type: Date, required: false},
         phone_number: {type: String, required: false},
-        geslacht: {type: String, required: false},
+        gender: {type: String, required: false},
+        bsn_number: {type: Number, required: false},
 
         is_admin: {type: Boolean, required: true, default: false},
 

@@ -1,8 +1,6 @@
 import express from "express";
 import mongoose from "mongoose";
 import router from "./routes/routeRouter.js"
-// import router from "./routes/routeRouter.js"
-import contentItemRouter from "./routes/contentItemRouter.js"
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -14,13 +12,13 @@ app.use((req, res, next) => {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization");
 
-    if (req.method === "OPTIONS" && (req.path === "/api/content-items" || req.path === "/api/content-items/")) {
+    if (req.method === "OPTIONS" && (req.path === `${process.env.BASE_URI}content-items ` || req.path === `${process.env.BASE_URI}content-items/`)) {
         res.header("Allow", "GET, POST, OPTIONS");
         res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
         return res.sendStatus(204);
     }
 
-    if (req.method === "OPTIONS" && req.path.startsWith("/api/content-items/")) {
+    if (req.method === "OPTIONS" && req.path.startsWith(`${process.env.BASE_URI}content-items/`)) {
         res.header("Allow", "GET, PUT, DELETE, OPTIONS");
         res.header("Access-Control-Allow-Methods", "GET, PUT, DELETE, OPTIONS");
         return res.sendStatus(204);
@@ -34,7 +32,6 @@ app.use((req, res, next) => {
 try {
     await mongoose.connect(process.env.MONGODB_URL)
     app.use(express.urlencoded())
-   // app.use("/plants", router)
     app.use("/", router)
 } catch (e) {
     app.use((req, res) => {
