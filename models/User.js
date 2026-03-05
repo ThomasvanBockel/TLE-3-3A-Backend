@@ -26,7 +26,6 @@ const userSchema = new mongoose.Schema(
             versionKey: false,
             transform: (doc, ret) => {
                 delete ret._id;
-             
                 delete ret.password_hash;
             },
         },

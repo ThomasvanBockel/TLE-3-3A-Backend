@@ -25,12 +25,12 @@ userRouter.use((req, res, next) => {
 
 userRouter.get("/", async (req, res) => {
     try {
-        const user = await User.find({email: req.body.email})
+        // find the user with there Email
+        const user = await User.findOne({email: req.body.email})
         if (!user) {
             return res.status(404).json("user not found")
         }
-
-        res.json({message: user.id, user})
+        res.json({user})
     } catch (e) {
         console.log(e)
     }
@@ -150,7 +150,14 @@ userRouter.post("/admin", async (req, res) => {
 });
 userRouter.put("/edit/:id", async (req, res) => {
     try {
+        // get the user id from the uri
         const id = req.params.id
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({message: "id is niet valid"});
+        }
+
+        // get teh data out of the body
         const {
             first_name,
             last_name,
@@ -162,13 +169,11 @@ userRouter.put("/edit/:id", async (req, res) => {
             personalization_enabled
         } = req.body;
 
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            return res.status(400).json({message: "id is niet valid"});
-        }
-
+        // check if the first name, last name and email is not empty
         if (!first_name && !last_name && !email) {
             return res.status(400), json({message: " these fields cannot be empty"})
         }
+        // update the user info
         const updated = await User.findByIdAndUpdate(
             id,
             {
@@ -181,9 +186,9 @@ userRouter.put("/edit/:id", async (req, res) => {
                 ...(phone_number && {phone_number}),
                 ...(personalization_enabled !== undefined && {personalization_enabled})
             },
-            {returnDocument: "after", runValidators: true}
+            {new: true, runValidators: true}
         );
-
+        // error if its not updated
         if (!updated) {
             return res.status(404).json({message: "de plant is niet gevonden"})
         }
@@ -192,5 +197,27 @@ userRouter.put("/edit/:id", async (req, res) => {
     } catch (e) {
         console.log(e)
     }
+})
+userRouter.delete("/delete/:id", async (req, res) => {
+    try {
+        // get there id from the uri
+        const id = req.params.id
+
+        // check if the ID is a valid mongoose id
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({message: "id is niet valid"});
+        }
+        //delete the user by there id
+        const deleted = await User.findByIdAndDelete(id)
+
+        // error if the user is not deleted
+        if (!deleted) {
+            return res.status(404).json({message: "plant is niet gevonden"})
+        }
+        res.status(204).send()
+    } catch (e) {
+        res.status(500).json({message: "gefaald om te verwijderen"})
+    }
+
 })
 export default userRouter
