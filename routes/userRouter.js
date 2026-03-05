@@ -59,8 +59,8 @@ userRouter.post("/register", async (req, res) => {
             birth_date: req.body.birth_date,
             phone_number: req.body.phone_number,
             is_admin: req.body.is_admin,
-            personalization_enabled: req.body.personalization_enabled
-
+            personalization_enabled: req.body.personalization_enabled,
+            bsn_number: req.body.bsn_number
         })
         await user.save()
         res.status(201).json("account created")
