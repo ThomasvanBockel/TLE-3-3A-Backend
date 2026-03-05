@@ -1,8 +1,9 @@
-import express from "express";
+import express, {json} from "express";
 import User from "../models/User.js";
 import bcrypt from "bcrypt"
 import contentItemRouter from "./contentItemRouter.js";
 import user from "../models/User.js";
+import mongoose from "mongoose";
 
 
 const userRouter = express.Router()
@@ -21,17 +22,18 @@ userRouter.use((req, res, next) => {
     }
 });
 
+
 userRouter.get("/", async (req, res) => {
     try {
         const user = await User.find({email: req.body.email})
         if (!user) {
             return res.status(404).json("user not found")
         }
-        res.json(user)
+
+        res.json({message: user.id, user})
     } catch (e) {
         console.log(e)
     }
-    res.json("hello world")
 })
 
 userRouter.post("/register", async (req, res) => {
@@ -104,9 +106,19 @@ userRouter.post("/admin", async (req, res) => {
             }
         }
 
-        const {name, email, password, birth_date, phone_number, personalization_enabled} = req.body;
+        const {
+            first_name,
+            last_name,
+            gender,
+            bsn_number,
+            email,
+            password,
+            birth_date,
+            phone_number,
+            personalization_enabled
+        } = req.body;
 
-        if (!name || !email || !password) {
+        if (!first_name || !last_name || !email || !password) {
             return res.status(400).json({message: "empty area's"});
         }
 
@@ -117,7 +129,10 @@ userRouter.post("/admin", async (req, res) => {
         const passwordHashed = await bcrypt.hash(password, SALT_ROUNDS);
 
         const adminUser = new User({
-            name,
+            first_name,
+            last_name,
+            gender,
+            bsn_number,
             email,
             password_hash: passwordHashed,
             birth_date,
@@ -133,5 +148,49 @@ userRouter.post("/admin", async (req, res) => {
         return res.status(500).json({message: "Server error"});
     }
 });
+userRouter.put("/edit/:id", async (req, res) => {
+    try {
+        const id = req.params.id
+        const {
+            first_name,
+            last_name,
+            gender,
+            bsn_number,
+            email,
+            birth_date,
+            phone_number,
+            personalization_enabled
+        } = req.body;
 
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({message: "id is niet valid"});
+        }
+
+        if (!first_name && !last_name && !email) {
+            return res.status(400), json({message: " these fields cannot be empty"})
+        }
+        const updated = await User.findByIdAndUpdate(
+            id,
+            {
+                ...(first_name && {first_name}),
+                ...(last_name && {last_name}),
+                ...(gender && {gender}),
+                ...(bsn_number && {bsn_number}),
+                ...(email && {email}),
+                ...(birth_date && {birth_date}),
+                ...(phone_number && {phone_number}),
+                ...(personalization_enabled !== undefined && {personalization_enabled})
+            },
+            {returnDocument: "after", runValidators: true}
+        );
+
+        if (!updated) {
+            return res.status(404).json({message: "de plant is niet gevonden"})
+        }
+
+        res.status(200).json(updated)
+    } catch (e) {
+        console.log(e)
+    }
+})
 export default userRouter
