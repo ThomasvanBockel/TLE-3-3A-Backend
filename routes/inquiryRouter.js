@@ -8,6 +8,32 @@ function makeToken() {
     return crypto.randomBytes(24).toString("hex");
 }
 
+inquiryRouter.use((req, res, next) => {
+    console.log("Check accept header");
+
+    if (req.method === "OPTIONS") {
+        res.header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization");
+        return next();
+    }
+
+    if (!req.headers.accept ||
+        req.headers.accept.includes("application/json") ||
+        req.headers.accept.includes("*/*") ||
+        req.headers.accept.includes("text/html")) {
+        return next();
+    }
+
+    return res.status(406).json({
+        message: "Alleen application/json wordt ondersteund! Ben je de accept header vergeten?",
+    });
+});
+
+inquiryRouter.options("/", (req, res) => {
+    res.header("Allow", "GET, POST, OPTIONS");
+    res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.status(204).send();
+});
+
 // GET ALL - /api/inquiries?status=&type=&token=
 inquiryRouter.get("/", async (req, res) => {
     try {
