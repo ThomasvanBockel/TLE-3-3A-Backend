@@ -1,9 +1,26 @@
 import express from "express";
 import User from "../models/User.js";
 import bcrypt from "bcrypt"
+import contentItemRouter from "./contentItemRouter.js";
+import user from "../models/User.js";
 
 
 const userRouter = express.Router()
+userRouter.use((req, res, next) => {
+    const acceptHeader = req.headers["accept"];
+    const method = req.method
+
+    res.set("Access-Control-Allow-Origin", "*")
+
+    console.log(`Client accepteert: ${acceptHeader}`);
+    if (acceptHeader.includes("application/json") || method === "OPTIONS") {
+        console.log(`this is JSON`)
+        next();
+    } else {
+        res.status(400).send("Illegal format");
+    }
+});
+
 userRouter.get("/", async (req, res) => {
     try {
         const user = await User.find({email: req.body.email})
