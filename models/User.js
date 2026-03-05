@@ -5,12 +5,14 @@ const userSchema = new mongoose.Schema(
     {
         legacyId: {type: Number, required: false, unique: true, sparse: true},
 
-        name: {type: String, required: true},
+        first_name: {type: String, required: true},
+        last_name: {type: String, required: true},
         email: {type: String, required: true, unique: true, lowercase: true, trim: true},
         password_hash: {type: String, required: true},
 
         birth_date: {type: Date, required: false},
         phone_number: {type: String, required: false},
+        geslacht: {type: String, required: false},
 
         is_admin: {type: Boolean, required: true, default: false},
 

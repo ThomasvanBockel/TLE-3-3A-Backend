@@ -19,7 +19,7 @@ userRouter.get("/", async (req, res) => {
 
 userRouter.post("/register", async (req, res) => {
     try {
-        if (!req.body.name || !req.body.email || !req.body.password) {
+        if (!req.body.first_name || !req.body.email || !req.body.password || !req.body.last_name) {
             return res.status(400).json("emty erea's")
         }
         // hashing password
@@ -34,7 +34,9 @@ userRouter.post("/register", async (req, res) => {
         }
 
         const user = new User({
-            name: req.body.name,
+            first_name: req.body.first_name,
+            last_name: req.body.last_name,
+            gender: req.body.gender,
             email: req.body.email,
             password_hash: passwordHashed,
             birth_date: req.body.birth_date,
