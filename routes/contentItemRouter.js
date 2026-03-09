@@ -1,5 +1,6 @@
 import express from 'express';
 import ContentItem from '../models/ContentItem.js';
+import syncContentCategories from '../async/ContentCategoryAsync.js';
 
 const contentItemRouter = express.Router();
 
@@ -57,10 +58,10 @@ contentItemRouter.get('/', async (req, res) => {
                 totalPages: totalPages,
                 totalItems: totalItems,
                 _links: {
-                    first: { href: `${process.env.BASE_URI_CONTENT_ITEMS}?page=1&limit=${limit}` },
-                    last: { href: `${process.env.BASE_URI_CONTENT_ITEMS}?page=${totalPages}&limit=${limit}` },
-                    previous: page > 1 ? { href: `${process.env.BASE_URI_CONTENT_ITEMS}?page=${page - 1}&limit=${limit}` } : null,
-                    next: page < totalPages ? { href: `${process.env.BASE_URI_CONTENT_ITEMS}?page=${page + 1}&limit=${limit}` } : null
+                    first: {href: `${process.env.BASE_URI_CONTENT_ITEMS}?page=1&limit=${limit}`},
+                    last: {href: `${process.env.BASE_URI_CONTENT_ITEMS}?page=${totalPages}&limit=${limit}`},
+                    previous: page > 1 ? {href: `${process.env.BASE_URI_CONTENT_ITEMS}?page=${page - 1}&limit=${limit}`} : null,
+                    next: page < totalPages ? {href: `${process.env.BASE_URI_CONTENT_ITEMS}?page=${page + 1}&limit=${limit}`} : null
                 }
             }
         };
@@ -77,10 +78,10 @@ contentItemRouter.get('/', async (req, res) => {
 //post
 
 //POST
-contentItemRouter.post('/', async(req, res) => {
+contentItemRouter.post('/', async (req, res) => {
     console.log("Post ontvangen")
     try {
-        const contentItem = new ContentItem ({
+        const contentItem = new ContentItem({
             legacyId: req.body.legacyId,
             title: req.body.title,
             body: req.body.body,
@@ -94,6 +95,9 @@ contentItemRouter.post('/', async(req, res) => {
             image: req.body.image
         })
         await contentItem.save();
+        if (req.body.category_ids) {
+            await syncContentCategories(contentItem._id, req.body.category_ids);
+        }
         res.json(contentItem);
     } catch (e) {
         res.status(400).json({
@@ -103,7 +107,7 @@ contentItemRouter.post('/', async(req, res) => {
 });
 
 //get met id
-contentItemRouter.get("/:id", async(req, res) => {
+contentItemRouter.get("/:id", async (req, res) => {
     console.log("Details opgehaald")
     try {
         const contentItemId = req.params.id;
@@ -121,7 +125,7 @@ contentItemRouter.get("/:id", async(req, res) => {
 contentItemRouter.put("/:id", async (req, res) => {
     const contentItemId = req.params.id;
 
-    const newContentItem ={
+    const newContentItem = {
         legacyId: req.body.legacyId,
         title: req.body.title,
         body: req.body.body,
@@ -138,8 +142,12 @@ contentItemRouter.put("/:id", async (req, res) => {
     try {
         const updatedContentItem = await ContentItem.findByIdAndUpdate(
             contentItemId, newContentItem,
-            { new: true }
+            {new: true}
         );
+
+        if (req.body.category_ids) {
+            await syncContentCategories(updatedContentItem._id, req.body.category_ids);
+        }
         res.json({
             message: "Content item aangepast!",
             contentItem: updatedContentItem
@@ -156,7 +164,7 @@ contentItemRouter.put("/:id", async (req, res) => {
 });
 
 //delete
-contentItemRouter.delete("/:id", async(req, res) => {
+contentItemRouter.delete("/:id", async (req, res) => {
     console.log("Delete ontvangen", req.params.id);
     try {
         const deletedContentItem = await ContentItem.findByIdAndDelete(req.params.id);
@@ -166,6 +174,8 @@ contentItemRouter.delete("/:id", async(req, res) => {
                 message: "Content item niet gevonden"
             });
         }
+
+        await ContentCategory.deleteMany({content_id: req.params.id});
 
         res.status(200).json({
             message: "Content item verwijderd!",
