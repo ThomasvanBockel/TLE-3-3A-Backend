@@ -22,7 +22,7 @@ userRouter.use((req, res, next) => {
     }
 });
 
-
+// get User data
 userRouter.get("/", async (req, res) => {
     try {
         // find the user with there Email
@@ -35,7 +35,7 @@ userRouter.get("/", async (req, res) => {
         console.log(e)
     }
 })
-
+// register for the user
 userRouter.post("/register", async (req, res) => {
     try {
         if (!req.body.first_name || !req.body.email || !req.body.password || !req.body.last_name) {
@@ -70,7 +70,7 @@ userRouter.post("/register", async (req, res) => {
         console.log(e)
     }
 })
-
+// login for the user
 userRouter.post("/login", async (req, res) => {
     try {
         if (!req.body.email || !req.body.password) {
@@ -148,6 +148,7 @@ userRouter.post("/admin", async (req, res) => {
         return res.status(500).json({message: "Server error"});
     }
 });
+// edit for the user
 userRouter.put("/edit/:id", async (req, res) => {
     try {
         // get the user id from the uri
@@ -157,7 +158,7 @@ userRouter.put("/edit/:id", async (req, res) => {
             return res.status(400).json({message: "id is niet valid"});
         }
 
-        // get teh data out of the body
+        // get the data out of the body
         const {
             first_name,
             last_name,
@@ -218,6 +219,5 @@ userRouter.delete("/delete/:id", async (req, res) => {
     } catch (e) {
         res.status(500).json({message: "gefaald om te verwijderen"})
     }
-
 })
 export default userRouter
