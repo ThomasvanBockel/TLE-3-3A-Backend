@@ -4,7 +4,7 @@ import bcrypt from "bcrypt"
 import contentItemRouter from "./contentItemRouter.js";
 import user from "../models/User.js";
 import mongoose from "mongoose";
-
+import jwt from 'jsonwebtoken';
 
 const userRouter = express.Router()
 userRouter.use((req, res, next) => {
@@ -22,7 +22,10 @@ userRouter.use((req, res, next) => {
     }
 });
 
-// get User data
+// /api/users/admin/edit/:id -> admin can edit user data
+// /api/users/post overload -> all users
+
+// get data from one user with email
 userRouter.get("/", async (req, res) => {
     try {
         // find the user with there Email
@@ -73,7 +76,7 @@ userRouter.post("/register", async (req, res) => {
 // login for the user
 userRouter.post("/login", async (req, res) => {
     try {
-        if (!req.body.email || !req.body.password) {
+        if (!req.body.email && !req.body.password) {
             return res.status(400).json("empty erea's")
         }
         // finding the user with email
@@ -87,12 +90,27 @@ userRouter.post("/login", async (req, res) => {
         if (!is_match) {
             return res.status(401).json("password is not correct")
         }
-
-        res.status(200).json(user)
+// JWT if its a user login as a user if its a admin login as a admin
+        if (user.is_admin === 1) {
+            const payload = {sub: user.id, role: 'admin'};
+            const secret = process.env.JWT_SECRET;
+            const token = await jwt.sign(payload, secret, {
+                expiresIn: '1h'
+            });
+            return res.status(200).json({message: "login succes", token, user})
+        } else {
+            const payload = {sub: user.id, role: 'user'};
+            const secret = process.env.JWT_SECRET;
+            const token = await jwt.sign(payload, secret, {
+                expiresIn: '1h'
+            });
+            return res.status(200).json({message: "login succes", token, user})
+        }
     } catch (e) {
         console.log(e)
     }
 })
+
 
 // POST /api/users/admin  -> maak admin
 userRouter.post("/admin", async (req, res) => {
@@ -148,6 +166,8 @@ userRouter.post("/admin", async (req, res) => {
         return res.status(500).json({message: "Server error"});
     }
 });
+
+
 // edit for the user
 userRouter.put("/edit/:id", async (req, res) => {
     try {
