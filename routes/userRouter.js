@@ -1,8 +1,6 @@
-import express, {json} from "express";
+import express from "express";
 import User from "../models/User.js";
 import bcrypt from "bcrypt"
-import contentItemRouter from "./contentItemRouter.js";
-import user from "../models/User.js";
 import mongoose from "mongoose";
 import jwt from 'jsonwebtoken';
 
@@ -22,11 +20,92 @@ userRouter.use((req, res, next) => {
     }
 });
 
-// /api/users/admin/edit/:id -> admin can edit user data
-// /api/users/post overload -> all users
+// /api/user/admin/edit/:id -> admin can edit user data
+userRouter.put("/admin/edit/:id", async (req, res) => {
+    try {
+        // get the user id from the uri
+        const id = req.params.id
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({message: "id is niet valid"});
+        }
+
+        // get the user data
+        const {
+            first_name,
+            last_name,
+            gender,
+            bsn,
+            email,
+            birth_date,
+            phone_number,
+            is_admin,
+            personalization_enabled
+        } = req.body;
+
+        // get the user by its id
+        const user = await User.findById(id)
+
+        // finding a use with that email
+        const exists = await User.findOne({email: email})
+
+        // checks if the email is the user's email
+        if (exists && user.email !== exists.email) {
+            return res.status(400).json({message: "Email already exists"})
+        }
+
+
+        // check if the first name, last name and email is not empty
+        if (!first_name && !last_name && !email) {
+            return res.status(400).json({message: " these fields cannot be empty"})
+        }
+        // update the user info
+        const updated = await User.findByIdAndUpdate(
+            id,
+            {
+                ...(first_name && {first_name}),
+                ...(last_name && {last_name}),
+                ...(gender && {gender}),
+                ...(bsn && {bsn}),
+                ...(email && {email}),
+                ...(birth_date && {birth_date}),
+                ...(is_admin && {is_admin}),
+                ...(phone_number && {phone_number}),
+                ...(personalization_enabled !== undefined && {personalization_enabled})
+            },
+            {new: true, runValidators: true}
+        );
+        // error if it's not updated
+        if (!updated) {
+            return res.status(404).json({message: "de user is niet gevonden"})
+        }
+
+        res.status(200).json(updated)
+    } catch (e) {
+        console.log(e)
+    }
+})
+// /api/user/post overload -> all users
+userRouter.get("/", async (req, res) => {
+    try {
+
+        const users = await User.find()
+
+        // only shows this data
+        const items = users.map((user) => ({
+            id: user.id,
+            first_name: user.first_name,
+            last_name: user.last_name,
+            email: user.email,
+
+        }));
+        res.json({items})
+    } catch (e) {
+        console.log(e)
+    }
+})
 
 // get data from one user with email
-userRouter.get("/", async (req, res) => {
+userRouter.get("/user", async (req, res) => {
     try {
         // find the user with there Email
         const user = await User.findOne({email: req.body.email})
@@ -42,7 +121,7 @@ userRouter.get("/", async (req, res) => {
 userRouter.post("/register", async (req, res) => {
     try {
         if (!req.body.first_name || !req.body.email || !req.body.password || !req.body.last_name) {
-            return res.status(400).json("emty erea's")
+            return res.status(400).json("empty fields")
         }
         // hashing password
         const password = req.body.password
@@ -77,7 +156,7 @@ userRouter.post("/register", async (req, res) => {
 userRouter.post("/login", async (req, res) => {
     try {
         if (!req.body.email && !req.body.password) {
-            return res.status(400).json("empty erea's")
+            return res.status(400).json("empty fields")
         }
         // finding the user with email
         const user = await User.findOne({email: req.body.email})
@@ -90,7 +169,7 @@ userRouter.post("/login", async (req, res) => {
         if (!is_match) {
             return res.status(401).json("password is not correct")
         }
-// JWT if its a user login as a user if its a admin login as a admin
+// JWT if it's a user login as a user if it's an admin login as an admin
         if (user.is_admin === 1) {
             const role = req.header("x-role");
             const payload = {sub: user.id, role: 'admin'};
@@ -192,9 +271,20 @@ userRouter.put("/edit/:id", async (req, res) => {
             personalization_enabled
         } = req.body;
 
+        // get the user by its id
+        const user = await User.findById(id)
+
+        // finding a user with that email
+        const exists = await User.findOne({email: email})
+
+        // checks if the email is the user's email
+        if (exists && user.email !== exists.email) {
+            return res.status(400).json({message: "Email already exists"})
+        }
+
         // check if the first name, last name and email is not empty
         if (!first_name && !last_name && !email) {
-            return res.status(400), json({message: " these fields cannot be empty"})
+            return res.status(400).json({message: " these fields cannot be empty"})
         }
         // update the user info
         const updated = await User.findByIdAndUpdate(
@@ -211,9 +301,9 @@ userRouter.put("/edit/:id", async (req, res) => {
             },
             {new: true, runValidators: true}
         );
-        // error if its not updated
+        // error if it's not updated
         if (!updated) {
-            return res.status(404).json({message: "de plant is niet gevonden"})
+            return res.status(404).json({message: "de user is niet gevonden"})
         }
 
         res.status(200).json(updated)
