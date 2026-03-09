@@ -92,19 +92,21 @@ userRouter.post("/login", async (req, res) => {
         }
 // JWT if its a user login as a user if its a admin login as a admin
         if (user.is_admin === 1) {
+            const role = req.header("x-role");
             const payload = {sub: user.id, role: 'admin'};
             const secret = process.env.JWT_SECRET;
             const token = await jwt.sign(payload, secret, {
                 expiresIn: '1h'
             });
-            return res.status(200).json({message: "login succes", token, user})
+            return res.status(200).json({message: "login succes", token, user, role})
         } else {
             const payload = {sub: user.id, role: 'user'};
+            const role = req.header("x-role");
             const secret = process.env.JWT_SECRET;
             const token = await jwt.sign(payload, secret, {
                 expiresIn: '1h'
             });
-            return res.status(200).json({message: "login succes", token, user})
+            return res.status(200).json({message: "login succes", token, user, role})
         }
     } catch (e) {
         console.log(e)
