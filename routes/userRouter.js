@@ -142,7 +142,7 @@ userRouter.post("/register", async (req, res) => {
             password_hash: passwordHashed,
             birth_date: req.body.birth_date,
             phone_number: req.body.phone_number,
-            is_admin: req.body.is_admin,
+            is_admin: req.body.is_admin ?? false,
             personalization_enabled: req.body.personalization_enabled,
             bsn: req.body.bsn
         })
