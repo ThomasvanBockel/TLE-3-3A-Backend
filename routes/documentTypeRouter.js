@@ -1,5 +1,6 @@
 import express from "express";
 import DocumentType from "../models/DocumentType.js";
+import documentType from "../models/DocumentType.js";
 
 const documentTypeRouter = express.Router();
 
@@ -54,6 +55,26 @@ documentTypeRouter.post("/", async (req, res) => {
     } catch (e) {
         console.log(e);
         return res.status(500).json({message: "Server error"});
+    }
+});
+
+//seed: paspoort, rijbewijs, id kaart, certificaten, medische verklaring, verzekeringspolis
+documentTypeRouter.post("/seed", async (req, res) => {
+    try {
+        await documentType.deleteMany({});
+        const seedData = [
+            { name: "Paspoort", description: "Officieel reisdocument dat de identiteit en nationaliteit van de houder bevestigt." },
+            { name: "Rijbewijs", description: "Officieel document dat toestemming geeft om een motorvoertuig te besturen." },
+            { name: "ID Kaart", description: "Officieel identiteitsbewijs dat de identiteit van de houder bevestigt." },
+            { name: "Certificaten", description: "Officiële documenten die aantonen dat iemand een bepaalde opleiding of training heeft voltooid." },
+            { name: "Medische Verklaring", description: "Officieel document dat de medische toestand van een persoon bevestigt, vaak vereist voor reizen of werk." },
+            { name: "Verzekeringspolis", description: "Officieel document dat de voorwaarden en dekking van een verzekering beschrijft." },
+        ];
+        await DocumentType.insertMany(seedData);
+        return res.status(201).json({ message: "Database seeded successfully" });
+    } catch (e) {
+        console.log(e);
+        return res.status(500).json({ message: "Server error" });
     }
 });
 
