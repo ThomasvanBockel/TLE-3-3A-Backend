@@ -6,12 +6,12 @@ const documentSchema = new mongoose.Schema(
         legacyId: {type: Number, required: false, unique: true, sparse: true},
 
         user_id: {type: mongoose.Schema.Types.ObjectId, ref: "User", required: true},
-        type: {type: String, required: true},
+        type_id: {type: Number, required: true},
 
         end_date: {type: Date, required: true},
         start_date: {type: Date, required: true},
 
-        extended: {type: Boolean, required: true, default: false},
+        extended: {type: Boolean, required: true}
     },
     {
         timestamps: true,
