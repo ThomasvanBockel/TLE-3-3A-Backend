@@ -62,7 +62,7 @@ userRouter.post("/register", async (req, res) => {
             phone_number: req.body.phone_number,
             is_admin: req.body.is_admin,
             personalization_enabled: req.body.personalization_enabled,
-            bsn_number: req.body.bsn_number
+            bsn: req.body.bsn
         })
         await user.save()
         res.status(201).json("account created")
@@ -110,7 +110,7 @@ userRouter.post("/admin", async (req, res) => {
             first_name,
             last_name,
             gender,
-            bsn_number,
+            bsn,
             email,
             password,
             birth_date,
@@ -132,7 +132,7 @@ userRouter.post("/admin", async (req, res) => {
             first_name,
             last_name,
             gender,
-            bsn_number,
+            bsn,
             email,
             password_hash: passwordHashed,
             birth_date,
@@ -163,7 +163,7 @@ userRouter.put("/edit/:id", async (req, res) => {
             first_name,
             last_name,
             gender,
-            bsn_number,
+            bsn,
             email,
             birth_date,
             phone_number,
@@ -181,7 +181,7 @@ userRouter.put("/edit/:id", async (req, res) => {
                 ...(first_name && {first_name}),
                 ...(last_name && {last_name}),
                 ...(gender && {gender}),
-                ...(bsn_number && {bsn_number}),
+                ...(bsn && {bsn}),
                 ...(email && {email}),
                 ...(birth_date && {birth_date}),
                 ...(phone_number && {phone_number}),
