@@ -7,7 +7,7 @@ const inquiryRouter = express.Router();
 function makeToken() {
     return crypto.randomBytes(24).toString("hex");
 }
-
+//inquiry/
 inquiryRouter.use((req, res, next) => {
     console.log("Check accept header");
 
@@ -82,15 +82,15 @@ inquiryRouter.get("/token/:token", async (req, res) => {
 
 inquiryRouter.post("/", async (req, res) => {
     try {
-        const {user_id, type, created_at, content, status, question} = req.body;
+        const {user_id, type_id, created_at, content, status, question} = req.body;
 
-        if (!user_id || !type || !created_at || !content || !status || !question) {
+        if (!user_id || !type_id || !created_at || !content || !status || !question) {
             return res.status(400).json({message: "Missing required fields"});
         }
         const activeStatuses = ["OPEN", "IN_PROGRESS"];
         const alreadyActiveSameType = await Inquiry.findOne({
             user_id,
-            type,
+            type_id,
             status: {$in: activeStatuses}
         });
 
@@ -105,7 +105,7 @@ inquiryRouter.post("/", async (req, res) => {
             try {
                 const inquiry = new Inquiry({
                     user_id,
-                    type,
+                    type_id,
                     created_at: new Date(created_at),
                     content,
                     status,
@@ -136,7 +136,7 @@ inquiryRouter.put("/:id", async (req, res) => {
     try {
         const {id} = req.params;
 
-        const allowed = ["type", "created_at", "content", "token", "status", "question", "user_id"];
+        const allowed = ["type_id", "created_at", "content", "token", "status", "question", "user_id"];
         const update = {};
 
         for (const key of allowed) {
