@@ -2,6 +2,7 @@ import express from "express";
 import Document from "../models/Document.js";
 
 
+
 const documentRouter = express.Router();
 
 //headers en options
@@ -61,8 +62,11 @@ documentRouter.get("/", async (req, res) => {
 documentRouter.post("/", async (req, res) => {
     try {
         const document = new Document({
-            name: req.body.name,
-            description: req.body.description,
+            user_id: req.body.user_id,
+            type_id: req.body.type_id,
+            end_date: req.body.end_date,
+            start_date: req.body.start_date,
+            extended: req.body.extended
         });
 
         await document.save();
@@ -96,8 +100,11 @@ documentRouter.put("/:id", async (req, res) => {
     try {
         const documentId = req.params.id;
         const updatedDocument = await Document.findByIdAndUpdate(documentId, {
-            name: req.body.name,
-            description: req.body.description,
+            user_id: req.body.user_id,
+            type_id: req.body.type_id,
+            end_date: req.body.end_date,
+            start_date: req.body.start_date,
+            extended: req.body.extended
         }, { new: true, runValidators: true });
 
         if (!updatedDocument) {

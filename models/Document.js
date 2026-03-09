@@ -6,7 +6,7 @@ const documentSchema = new mongoose.Schema(
         legacyId: {type: Number, required: false, unique: true, sparse: true},
 
         user_id: {type: mongoose.Schema.Types.ObjectId, ref: "User", required: true},
-        type_id: {type: Number, required: true},
+        type_id: {type: mongoose.Schema.Types.ObjectId, ref: "DocumentType", required: true},
 
         end_date: {type: Date, required: true},
         start_date: {type: Date, required: true},
