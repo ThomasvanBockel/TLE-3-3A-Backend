@@ -74,8 +74,6 @@ contentItemRouter.get('/', async (req, res) => {
     }
 });
 
-//post
-
 //POST
 contentItemRouter.post('/', async(req, res) => {
     console.log("Post ontvangen")

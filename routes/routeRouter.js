@@ -1,14 +1,17 @@
 import express from "express";
 import userRouter from "./userRouter.js"
-import contentItem from "../models/ContentItem.js";
 import contentItemRouter from "./contentItemRouter.js";
-import InquiryRouter from "./inquiryRouter.js";
-import InquiryTypeRouter from "./inquiryTypeRouter.js";
+import inquiryRouter from "./inquiryRouter.js";
+import inquiryTypeRouter from "./inquiryTypeRouter.js";
+import documentRouter from "./documentRouter.js";
+import documentType from "../models/DocumentType.js";
 
 const router = express.Router()
 router.use("/user", userRouter)
-router.use("/inquiry", InquiryRouter)
+router.use("/inquiry", inquiryRouter)
+router.use("/documents/", documentRouter)
 router.use("/api/content-items/", contentItemRouter)
-router.use("/inquiry-types/", InquiryTypeRouter)
+router.use("/inquiry-types/", inquiryTypeRouter)
+router.use("/document-types/", documentType)
 
 export default router
