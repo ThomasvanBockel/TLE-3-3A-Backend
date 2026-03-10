@@ -1,12 +1,11 @@
 import express from "express";
 import userRouter from "./userRouter.js"
-import contentItemRouter from "./contentItemRouter.js";
 import InquiryRouter from "./inquiryRouter.js";
 import categoryRouter from "./categoryRouter.js";
-import inquiryRouter from "./inquiryRouter.js";
 import inquiryTypeRouter from "./inquiryTypeRouter.js";
 import documentRouter from "./documentRouter.js";
 import documentType from "./documentTypeRouter.js";
+import contentItemRouter from "./contentItemRouter.js";
 
 const router = express.Router()
 router.use("/api/user", userRouter)
