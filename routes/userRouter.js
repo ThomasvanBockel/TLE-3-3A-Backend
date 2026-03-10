@@ -106,13 +106,14 @@ userRouter.get("/", async (req, res) => {
     }
 })
 
-// get data from one user with email
-userRouter.get("/user", auth, async (req, res) => {
+// get data from one user with id
+userRouter.get("/:id", auth, async (req, res) => {
     try {
-        // find the user with there Email
-        const user = await User.findOne({email: req.body.email})
+        const id = req.params.id
 
-        const id = user.id
+        // find the user with there id
+        const user = await User.findById(id)
+
 
         if (req.auth.sub !== id) {
             return res.status(401).json({message: "you can only edit your own information"})
