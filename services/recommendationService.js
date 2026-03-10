@@ -11,6 +11,7 @@ import RecommendationItem from "../models/RecommendationItem.js";
 let extractorPromise = null;
 const embeddingCache = new Map();
 
+//cosineSimilarity used to compare user data to content data
 function cosineSimilarity(a = [], b = []) {
     if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length || a.length === 0) {
         return 0;
@@ -42,6 +43,7 @@ function normalizeWeight(value) {
     return Math.min(parsed, 10);
 }
 
+//add promise in case of no promise to prevent console message
 async function getExtractor() {
     if (!extractorPromise) {
         extractorPromise = pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2", {
@@ -52,6 +54,7 @@ async function getExtractor() {
     return extractorPromise;
 }
 
+//extract content/user text for huggingface to create vectors
 async function embedText(text) {
     const normalizedText = String(text || "").trim();
     if (!normalizedText) return [];
@@ -92,6 +95,7 @@ function weightedAverage(vectors, weights) {
     return sum.map((value) => value / totalWeight);
 }
 
+//get user interest based on category preferences
 async function buildUserProfileVector(userId) {
     const interests = await UserInterest.find({ user_id: userId }).lean();
     if (!interests.length) return [];
@@ -123,6 +127,7 @@ function buildContentText(item, categories = []) {
     return `${item.title || ""}. ${item.body || ""}. ${categoryText}`.trim();
 }
 
+//decrease odds of content being shown over time
 function getFreshnessBoost(createdAt) {
     if (!createdAt) return 0;
     const ageDays = (Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24);
@@ -133,6 +138,7 @@ function getFreshnessBoost(createdAt) {
     return 0;
 }
 
+//increase odds of item shown based on mandates and urgency
 function getRuleBoost(item, hasPreferredCategory) {
     let boost = 0;
     if (item.is_mandatory) boost += 0.12;
@@ -143,6 +149,7 @@ function getRuleBoost(item, hasPreferredCategory) {
     return boost;
 }
 
+//show more details for recommendation choice
 function toRecommendationReason(similarity, ruleBoost, preferredCategories = []) {
     return {
         semantic_similarity: Number(similarity.toFixed(6)),
@@ -151,10 +158,13 @@ function toRecommendationReason(similarity, ruleBoost, preferredCategories = [])
     };
 }
 
+//sort content items in order of most to least recommended based on factors like categories
 export async function generateRecommendations({ userId, limit = 10, persist = true, debug = false }) {
     const safeLimit = Math.max(1, Math.min(Number(limit) || 10, 50));
 
     const user = await User.findById(userId).lean();
+
+    //user has to be logged in
     if (!user) {
         return { status: 404, payload: { message: "User not found" } };
     }
@@ -164,6 +174,8 @@ export async function generateRecommendations({ userId, limit = 10, persist = tr
         .select("title body content_type is_urgent is_mandatory created_at starts_at ends_at status")
         .lean();
 
+
+    //checks if content matches expected length
     if (!allContent.length) {
         const payload = {
             user_id: userId,
@@ -198,9 +210,11 @@ export async function generateRecommendations({ userId, limit = 10, persist = tr
         categoryIdsByContentId.set(contentId, current);
     }
 
+    //get interest of user
     const userInterests = await UserInterest.find({ user_id: userId }).lean();
     const preferredCategoryIdSet = new Set(userInterests.map((interest) => String(interest.category_id)));
 
+    // if user does not want personalised page show recent content
     if (user.personalization_enabled === false) {
         const items = allContent
             .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
@@ -223,6 +237,7 @@ export async function generateRecommendations({ userId, limit = 10, persist = tr
             }
         };
 
+        //if debug show more context for chosen content
         if (debug) {
             payload.payload.debug = {
                 total_content_count: totalContentCount,
@@ -264,6 +279,7 @@ export async function generateRecommendations({ userId, limit = 10, persist = tr
         });
     }
 
+    //sort content items based on score
     scoredItems.sort((a, b) => b.score - a.score);
     const topItems = scoredItems.slice(0, safeLimit);
 
