@@ -11,26 +11,26 @@ import RecommendationItem from "../models/RecommendationItem.js";
 let extractorPromise = null;
 const embeddingCache = new Map();
 
-//cosineSimilarity used to compare user data to content data
-function cosineSimilarity(a = [], b = []) {
-    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length || a.length === 0) {
+// Compare two vectors and return a similarity score between -1 and 1.
+function cosineSimilarity(firstVector = [], secondVector = []) {
+    if (!Array.isArray(firstVector) || !Array.isArray(secondVector) || firstVector.length !== secondVector.length || firstVector.length === 0) {
         return 0;
     }
 
-    let dot = 0;
-    let normA = 0;
-    let normB = 0;
+    let dotProduct = 0;
+    let firstMagnitudeSquared = 0;
+    let secondMagnitudeSquared = 0;
 
-    for (let i = 0; i < a.length; i += 1) {
-        const av = Number(a[i]) || 0;
-        const bv = Number(b[i]) || 0;
-        dot += av * bv;
-        normA += av * av;
-        normB += bv * bv;
+    for (let i = 0; i < firstVector.length; i += 1) {
+        const firstValue = Number(firstVector[i]) || 0;
+        const secondValue = Number(secondVector[i]) || 0;
+        dotProduct += firstValue * secondValue;
+        firstMagnitudeSquared += firstValue * firstValue;
+        secondMagnitudeSquared += secondValue * secondValue;
     }
 
-    if (normA === 0 || normB === 0) return 0;
-    return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+    if (firstMagnitudeSquared === 0 || secondMagnitudeSquared === 0) return 0;
+    return dotProduct / (Math.sqrt(firstMagnitudeSquared) * Math.sqrt(secondMagnitudeSquared));
 }
 
 function clamp01(value) {
@@ -43,7 +43,7 @@ function normalizeWeight(value) {
     return Math.min(parsed, 10);
 }
 
-//add promise in case of no promise to prevent console message
+// Reuse the same model instance across calls.
 async function getExtractor() {
     if (!extractorPromise) {
         extractorPromise = pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2", {
@@ -54,7 +54,7 @@ async function getExtractor() {
     return extractorPromise;
 }
 
-//extract content/user text for huggingface to create vectors
+// Convert text to an embedding vector and cache repeated texts.
 async function embedText(text) {
     const normalizedText = String(text || "").trim();
     if (!normalizedText) return [];
@@ -77,49 +77,49 @@ async function embedText(text) {
 function weightedAverage(vectors, weights) {
     if (!vectors.length) return [];
 
-    const dimension = vectors[0].length;
-    const sum = new Array(dimension).fill(0);
+    const vectorLength = vectors[0].length;
+    const weightedSums = new Array(vectorLength).fill(0);
 
     let totalWeight = 0;
     for (let i = 0; i < vectors.length; i += 1) {
-        const weight = weights[i] || 0;
-        if (!weight || vectors[i].length !== dimension) continue;
+        const currentWeight = weights[i] || 0;
+        if (!currentWeight || vectors[i].length !== vectorLength) continue;
 
-        totalWeight += weight;
-        for (let j = 0; j < dimension; j += 1) {
-            sum[j] += vectors[i][j] * weight;
+        totalWeight += currentWeight;
+        for (let j = 0; j < vectorLength; j += 1) {
+            weightedSums[j] += vectors[i][j] * currentWeight;
         }
     }
 
     if (totalWeight === 0) return [];
-    return sum.map((value) => value / totalWeight);
+    return weightedSums.map((value) => value / totalWeight);
 }
 
-//get user interest based on category preferences
+// Build a single profile vector from weighted user interests.
 async function buildUserProfileVector(userId) {
-    const interests = await UserInterest.find({ user_id: userId }).lean();
-    if (!interests.length) return [];
+    const userInterestRows = await UserInterest.find({ user_id: userId }).lean();
+    if (!userInterestRows.length) return [];
 
-    const categoryIds = interests.map((interest) => interest.category_id);
-    const categories = await Category.find({ _id: { $in: categoryIds } }).select("name").lean();
-    const nameById = new Map(categories.map((category) => [String(category._id), category.name]));
+    const interestCategoryIds = userInterestRows.map((interest) => interest.category_id);
+    const categories = await Category.find({ _id: { $in: interestCategoryIds } }).select("name").lean();
+    const categoryNameById = new Map(categories.map((category) => [String(category._id), category.name]));
 
-    const vectors = [];
-    const weights = [];
+    const interestVectors = [];
+    const interestWeights = [];
 
-    for (const interest of interests) {
-        const categoryName = nameById.get(String(interest.category_id));
+    for (const interest of userInterestRows) {
+        const categoryName = categoryNameById.get(String(interest.category_id));
         if (!categoryName) continue;
 
-        const text = `Interesse in ${categoryName}`;
-        const vector = await embedText(text);
-        if (!vector.length) continue;
+        const interestText = `Interesse in ${categoryName}`;
+        const interestVector = await embedText(interestText);
+        if (!interestVector.length) continue;
 
-        vectors.push(vector);
-        weights.push(normalizeWeight(interest.weight));
+        interestVectors.push(interestVector);
+        interestWeights.push(normalizeWeight(interest.weight));
     }
 
-    return weightedAverage(vectors, weights);
+    return weightedAverage(interestVectors, interestWeights);
 }
 
 function buildContentText(item, categories = []) {
@@ -127,7 +127,7 @@ function buildContentText(item, categories = []) {
     return `${item.title || ""}. ${item.body || ""}. ${categoryText}`.trim();
 }
 
-//decrease odds of content being shown over time
+// Newer content gets a small temporary boost.
 function getFreshnessBoost(createdAt) {
     if (!createdAt) return 0;
     const ageDays = (Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24);
@@ -138,7 +138,7 @@ function getFreshnessBoost(createdAt) {
     return 0;
 }
 
-//increase odds of item shown based on mandates and urgency
+// Business rules that can nudge an item up independent of semantic similarity.
 function getRuleBoost(item, hasPreferredCategory) {
     let boost = 0;
     if (item.is_mandatory) boost += 0.12;
@@ -149,7 +149,7 @@ function getRuleBoost(item, hasPreferredCategory) {
     return boost;
 }
 
-//show more details for recommendation choice
+// Include traceable values so API consumers can inspect why an item ranked.
 function toRecommendationReason(similarity, ruleBoost, preferredCategories = []) {
     return {
         semantic_similarity: Number(similarity.toFixed(6)),
@@ -158,25 +158,25 @@ function toRecommendationReason(similarity, ruleBoost, preferredCategories = [])
     };
 }
 
-//sort content items in order of most to least recommended based on factors like categories
+// Score and rank content for a user using semantic similarity + rule boosts.
 export async function generateRecommendations({ userId, limit = 10, persist = true, debug = false }) {
     const safeLimit = Math.max(1, Math.min(Number(limit) || 10, 50));
 
-    const user = await User.findById(userId).lean();
+    const userRecord = await User.findById(userId).lean();
 
-    //user has to be logged in
-    if (!user) {
+    // User must exist before recommendations can be generated.
+    if (!userRecord) {
         return { status: 404, payload: { message: "User not found" } };
     }
 
     const totalContentCount = await ContentItem.countDocuments({});
-    const allContent = await ContentItem.find({ status: { $ne: "ARCHIVED" } })
+    const eligibleContentItems = await ContentItem.find({ status: { $ne: "ARCHIVED" } })
         .select("title body content_type is_urgent is_mandatory created_at starts_at ends_at status")
         .lean();
 
 
-    //checks if content matches expected length
-    if (!allContent.length) {
+    // Return early when there is no content available for recommendation.
+    if (!eligibleContentItems.length) {
         const payload = {
             user_id: userId,
             items: [],
@@ -195,28 +195,28 @@ export async function generateRecommendations({ userId, limit = 10, persist = tr
         return { status: 200, payload };
     }
 
-    const contentIds = allContent.map((item) => item._id);
-    const contentCategories = await ContentCategory.find({ content_id: { $in: contentIds } }).lean();
-    const categoryIds = [...new Set(contentCategories.map((cc) => String(cc.category_id)))];
-    const categories = await Category.find({ _id: { $in: categoryIds } }).select("name").lean();
+    const eligibleContentIds = eligibleContentItems.map((item) => item._id);
+    const contentCategoryRelations = await ContentCategory.find({ content_id: { $in: eligibleContentIds } }).lean();
+    const distinctCategoryIds = [...new Set(contentCategoryRelations.map((relation) => String(relation.category_id)))];
+    const categories = await Category.find({ _id: { $in: distinctCategoryIds } }).select("name").lean();
 
     const categoryNameById = new Map(categories.map((category) => [String(category._id), category.name]));
     const categoryIdsByContentId = new Map();
 
-    for (const rel of contentCategories) {
-        const contentId = String(rel.content_id);
-        const current = categoryIdsByContentId.get(contentId) || [];
-        current.push(String(rel.category_id));
-        categoryIdsByContentId.set(contentId, current);
+    for (const relation of contentCategoryRelations) {
+        const contentId = String(relation.content_id);
+        const relatedCategoryIds = categoryIdsByContentId.get(contentId) || [];
+        relatedCategoryIds.push(String(relation.category_id));
+        categoryIdsByContentId.set(contentId, relatedCategoryIds);
     }
 
-    //get interest of user
-    const userInterests = await UserInterest.find({ user_id: userId }).lean();
-    const preferredCategoryIdSet = new Set(userInterests.map((interest) => String(interest.category_id)));
+    // Determine which categories this user explicitly prefers.
+    const userInterestRows = await UserInterest.find({ user_id: userId }).lean();
+    const preferredCategoryIdSet = new Set(userInterestRows.map((interest) => String(interest.category_id)));
 
-    // if user does not want personalised page show recent content
-    if (user.personalization_enabled === false) {
-        const items = allContent
+    // Personalization opt-out: return newest eligible content.
+    if (userRecord.personalization_enabled === false) {
+        const nonPersonalizedItems = eligibleContentItems
             .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
             .slice(0, safeLimit)
             .map((item, index) => ({
@@ -231,8 +231,8 @@ export async function generateRecommendations({ userId, limit = 10, persist = tr
             payload: {
                 user_id: userId,
                 personalization_enabled: false,
-                total: items.length,
-                items,
+                total: nonPersonalizedItems.length,
+                items: nonPersonalizedItems,
                 message: "Personalization is disabled for this user, returning newest content"
             }
         };
@@ -241,8 +241,8 @@ export async function generateRecommendations({ userId, limit = 10, persist = tr
         if (debug) {
             payload.payload.debug = {
                 total_content_count: totalContentCount,
-                eligible_content_count: allContent.length,
-                user_interests_count: userInterests.length
+                eligible_content_count: eligibleContentItems.length,
+                user_interests_count: userInterestRows.length
             };
         }
 
@@ -251,46 +251,46 @@ export async function generateRecommendations({ userId, limit = 10, persist = tr
 
     const userVector = await buildUserProfileVector(userId);
 
-    const scoredItems = [];
-    for (const item of allContent) {
-        const categoryIdsForContent = categoryIdsByContentId.get(String(item._id)) || [];
-        const categoryNamesForContent = categoryIdsForContent
+    const scoredContentItems = [];
+    for (const contentItem of eligibleContentItems) {
+        const categoryIdsForItem = categoryIdsByContentId.get(String(contentItem._id)) || [];
+        const categoryNamesForItem = categoryIdsForItem
             .map((id) => categoryNameById.get(String(id)))
             .filter(Boolean);
 
-        const contentText = buildContentText(item, categoryNamesForContent);
+        const contentText = buildContentText(contentItem, categoryNamesForItem);
         const contentVector = await embedText(contentText);
 
         const similarity = userVector.length ? cosineSimilarity(userVector, contentVector) : 0;
-        const hasPreferredCategory = categoryIdsForContent.some((id) => preferredCategoryIdSet.has(String(id)));
-        const ruleBoost = getRuleBoost(item, hasPreferredCategory);
+        const hasPreferredCategory = categoryIdsForItem.some((id) => preferredCategoryIdSet.has(String(id)));
+        const ruleBoost = getRuleBoost(contentItem, hasPreferredCategory);
 
-        const combined = clamp01((similarity + 1) / 2 + ruleBoost);
+        const finalScore = clamp01((similarity + 1) / 2 + ruleBoost);
 
-        const preferredCategoryNames = categoryIdsForContent
+        const preferredCategoryNamesForItem = categoryIdsForItem
             .filter((id) => preferredCategoryIdSet.has(String(id)))
             .map((id) => categoryNameById.get(String(id)))
             .filter(Boolean);
 
-        scoredItems.push({
-            content: item,
-            score: combined,
-            reason: toRecommendationReason(similarity, ruleBoost, preferredCategoryNames)
+        scoredContentItems.push({
+            content: contentItem,
+            score: finalScore,
+            reason: toRecommendationReason(similarity, ruleBoost, preferredCategoryNamesForItem)
         });
     }
 
-    //sort content items based on score
-    scoredItems.sort((a, b) => b.score - a.score);
-    const topItems = scoredItems.slice(0, safeLimit);
+    // Highest score first, then trim to requested limit.
+    scoredContentItems.sort((a, b) => b.score - a.score);
+    const topRankedItems = scoredContentItems.slice(0, safeLimit);
 
-    let run = null;
+    let recommendationRun = null;
     if (persist) {
-        run = await RecommendationRun.create({ user_id: userId });
+        recommendationRun = await RecommendationRun.create({ user_id: userId });
 
-        if (topItems.length) {
+        if (topRankedItems.length) {
             await RecommendationItem.insertMany(
-                topItems.map((entry, index) => ({
-                    run_id: run._id,
+                topRankedItems.map((entry, index) => ({
+                    run_id: recommendationRun._id,
                     content_id: entry.content._id,
                     rank_position: index + 1,
                     score: mongoose.Types.Decimal128.fromString(entry.score.toFixed(8)),
@@ -305,10 +305,10 @@ export async function generateRecommendations({ userId, limit = 10, persist = tr
         status: 200,
         payload: {
             user_id: userId,
-            run_id: run?._id || null,
+            run_id: recommendationRun?._id || null,
             personalization_enabled: true,
-            total: topItems.length,
-            items: topItems.map((entry, index) => ({
+            total: topRankedItems.length,
+            items: topRankedItems.map((entry, index) => ({
                 rank_position: index + 1,
                 score: Number(entry.score.toFixed(6)),
                 content: entry.content,
@@ -320,8 +320,8 @@ export async function generateRecommendations({ userId, limit = 10, persist = tr
     if (debug) {
         payload.payload.debug = {
             total_content_count: totalContentCount,
-            eligible_content_count: allContent.length,
-            user_interests_count: userInterests.length,
+            eligible_content_count: eligibleContentItems.length,
+            user_interests_count: userInterestRows.length,
             preferred_category_count: preferredCategoryIdSet.size
         };
     }
