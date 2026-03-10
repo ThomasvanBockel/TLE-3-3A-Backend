@@ -82,7 +82,7 @@ documentTypeRouter.post("/seed", async (req, res) => {
 documentTypeRouter.get("/:id", async (req, res) => {
     try {
         const documentTypeId = req.params.id;
-        const documentType = await DocumnetType.findById(documentTypeId);
+        const documentType = await DocumentType.findById(documentTypeId);
         res.json(documentType);
     } catch (e) {
         console.error("Error fetching document type by ID:", e);

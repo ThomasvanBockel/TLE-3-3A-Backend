@@ -7,6 +7,7 @@ import inquiryRouter from "./inquiryRouter.js";
 import inquiryTypeRouter from "./inquiryTypeRouter.js";
 import documentRouter from "./documentRouter.js";
 import documentType from "./documentTypeRouter.js";
+import clientRouter from "./clientRouter.js";
 
 const router = express.Router()
 router.use("/api/user", userRouter)
@@ -18,5 +19,6 @@ router.use("/api/content-items/", contentItemRouter)
 router.use("/api/categories", categoryRouter)
 router.use("/inquiry-types/", inquiryTypeRouter)
 router.use("/document-types/", documentType)
+router.use("/client/", clientRouter)
 
 export default router
