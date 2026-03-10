@@ -1,8 +1,37 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import ContentItem from '../models/ContentItem.js';
+import ContentCategory from '../models/ContentCategory.js';
+import Category from '../models/Category.js';
 import syncContentCategories from '../async/ContentCategoryAsync.js';
 
 const contentItemRouter = express.Router();
+
+async function resolveCategoryObjectId(rawCategoryId) {
+    if (rawCategoryId === undefined || rawCategoryId === null || rawCategoryId === "") {
+        return null;
+    }
+
+    const asString = String(rawCategoryId).trim();
+    if (mongoose.Types.ObjectId.isValid(asString)) {
+        return asString;
+    }
+
+    const numericLegacyId = Number(asString);
+    if (!Number.isNaN(numericLegacyId)) {
+        const category = await Category.findOne({ legacyId: numericLegacyId }).select("_id").lean();
+        if (category?._id) {
+            return String(category._id);
+        }
+    }
+
+    const byName = await Category.findOne({ name: asString }).select("_id").lean();
+    if (byName?._id) {
+        return String(byName._id);
+    }
+
+    return null;
+}
 
 //headers en options
 contentItemRouter.use((req, res, next) => {
@@ -81,11 +110,19 @@ contentItemRouter.get('/', async (req, res) => {
 contentItemRouter.post('/', async (req, res) => {
     console.log("Post ontvangen")
     try {
+        const resolvedCategoryId = await resolveCategoryObjectId(req.body.category_id);
+        if (!resolvedCategoryId) {
+            return res.status(400).json({
+                message: "Request van de client is ongeldig",
+                error: "category_id moet een geldige Category ObjectId zijn, of een bestaand numeriek legacyId, of een bestaande categorienaam"
+            });
+        }
+
         const contentItem = new ContentItem({
             legacyId: req.body.legacyId,
             title: req.body.title,
             body: req.body.body,
-            content_type: req.body.content_type,
+            category_id: resolvedCategoryId,
             is_urgent: req.body.is_urgent,
             is_mandatory: req.body.is_mandatory,
             starts_at: req.body.starts_at,
@@ -95,13 +132,15 @@ contentItemRouter.post('/', async (req, res) => {
             image: req.body.image
         })
         await contentItem.save();
-        if (req.body.category_ids) {
-            await syncContentCategories(contentItem._id, req.body.category_ids);
+        if (resolvedCategoryId) {
+            await syncContentCategories(contentItem._id, [resolvedCategoryId]);
         }
         res.json(contentItem);
     } catch (e) {
+        console.error("Create content item error:", e);
         res.status(400).json({
-            message: "Request van de client is ongeldig"
+            message: "Request van de client is ongeldig",
+            error: e.message
         });
     }
 });
@@ -125,11 +164,22 @@ contentItemRouter.get("/:id", async (req, res) => {
 contentItemRouter.put("/:id", async (req, res) => {
     const contentItemId = req.params.id;
 
+    const resolvedCategoryId = req.body.category_id === undefined
+        ? undefined
+        : await resolveCategoryObjectId(req.body.category_id);
+
+    if (req.body.category_id !== undefined && !resolvedCategoryId) {
+        return res.status(400).json({
+            message: "Request van de client is ongeldig",
+            error: "category_id moet een geldige Category ObjectId zijn, of een bestaand numeriek legacyId, of een bestaande categorienaam"
+        });
+    }
+
     const newContentItem = {
         legacyId: req.body.legacyId,
         title: req.body.title,
         body: req.body.body,
-        content_type: req.body.content_type,
+        category_id: resolvedCategoryId,
         is_urgent: req.body.is_urgent,
         is_mandatory: req.body.is_mandatory,
         starts_at: req.body.starts_at,
@@ -145,8 +195,8 @@ contentItemRouter.put("/:id", async (req, res) => {
             {new: true}
         );
 
-        if (req.body.category_ids) {
-            await syncContentCategories(updatedContentItem._id, req.body.category_ids);
+        if (resolvedCategoryId) {
+            await syncContentCategories(updatedContentItem._id, [resolvedCategoryId]);
         }
         res.json({
             message: "Content item aangepast!",
