@@ -16,8 +16,6 @@ router.use("/api/content-items/", contentItemRouter)
 router.use("/api/categories", categoryRouter)
 router.use("/api/inquiry-types/", inquiryTypeRouter)
 router.use("/api/document-types/", documentType)
-router.use("/inquiry-types/", inquiryTypeRouter)
-router.use("/document-types/", documentType)
-router.use("/client/", clientRouter)
+router.use("/api/client/", clientRouter)
 
 export default router
