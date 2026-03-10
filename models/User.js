@@ -5,10 +5,15 @@ const userSchema = new mongoose.Schema(
     {
         legacyId: {type: Number, required: false, unique: true, sparse: true},
 
+        client_id: {type: mongoose.Schema.Types.ObjectId, ref: "Client", required: true},
+
         first_name: {type: String, required: true},
         last_name: {type: String, required: true},
         gender: {type: String, required: false},
         email: {type: String, required: true, unique: true},
+        adres: {type: String, required: false},
+        nationality: {type: String, required: false},
+        postal_code: {type: String, required: false},
         password_hash: {type: String, required: true},
 
         birth_date: {type: Date, required: false},

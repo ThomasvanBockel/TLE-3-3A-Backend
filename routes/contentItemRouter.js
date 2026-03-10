@@ -80,6 +80,7 @@ contentItemRouter.post('/', async(req, res) => {
     try {
         const contentItem = new ContentItem ({
             legacyId: req.body.legacyId,
+            client_id: req.body.client_id,
             title: req.body.title,
             body: req.body.body,
             content_type: req.body.content_type,
@@ -121,6 +122,7 @@ contentItemRouter.put("/:id", async (req, res) => {
 
     const newContentItem ={
         legacyId: req.body.legacyId,
+        client_id: req.body.client_id,
         title: req.body.title,
         body: req.body.body,
         content_type: req.body.content_type,

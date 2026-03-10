@@ -81,13 +81,14 @@ categoryRouter.post("/", async (req, res) => {
     try {
         if (!requireAdmin(req, res)) return;
 
-        const {name, legacyId} = req.body;
+        const {name, legacyId, client_id} = req.body;
         if (!name) return res.status(400).json({message: "name is required"});
+        if (!client_id) return res.status(400).json({message: "client_id is required"});
 
         const exists = await Category.findOne({name});
         if (exists) return res.status(400).json({message: "Category already exists"});
 
-        const category = new Category({name, legacyId});
+        const category = new Category({name, legacyId, client_id});
         await category.save();
 
         return res.status(201).json(category);
@@ -102,11 +103,12 @@ categoryRouter.put("/:id", async (req, res) => {
     try {
         if (!requireAdmin(req, res)) return;
 
-        const {name, legacyId} = req.body;
+        const {name, legacyId, client_id} = req.body;
         const update = {};
 
         if (name !== undefined) update.name = name;
         if (legacyId !== undefined) update.legacyId = legacyId;
+        if (client_id !== undefined) update.client_id = client_id;
 
         if (Object.keys(update).length === 0) {
             return res.status(400).json({message: "No valid fields to update"});

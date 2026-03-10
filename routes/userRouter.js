@@ -33,11 +33,15 @@ userRouter.put("/admin/edit/:id", auth, adminOnly, async (req, res) => {
 
         // get the user data
         const {
+            client_id,
             first_name,
             last_name,
             gender,
             bsn,
             email,
+            adres,
+            nationality,
+            postal_code,
             birth_date,
             phone_number,
             is_admin,
@@ -64,11 +68,15 @@ userRouter.put("/admin/edit/:id", auth, adminOnly, async (req, res) => {
         const updated = await User.findByIdAndUpdate(
             id,
             {
+                ...(client_id && {client_id}),
                 ...(first_name && {first_name}),
                 ...(last_name && {last_name}),
                 ...(gender && {gender}),
                 ...(bsn && {bsn}),
                 ...(email && {email}),
+                ...(adres && {adres}),
+                ...(nationality && {nationality}),
+                ...(postal_code && {postal_code}),
                 ...(birth_date && {birth_date}),
                 ...(is_admin && {is_admin}),
                 ...(phone_number && {phone_number}),
@@ -145,10 +153,14 @@ userRouter.post("/register", async (req, res) => {
         }
 
         const user = new User({
+            client_id: req.body.client_id,
             first_name: req.body.first_name,
             last_name: req.body.last_name,
             gender: req.body.gender,
             email: req.body.email,
+            adres: req.body.adres,
+            nationality: req.body.nationality,
+            postal_code: req.body.postal_code,
             password_hash: passwordHashed,
             birth_date: req.body.birth_date,
             phone_number: req.body.phone_number,
@@ -216,11 +228,15 @@ userRouter.post("/admin", async (req, res) => {
         }
 
         const {
+            client_id,
             first_name,
             last_name,
             gender,
             bsn,
             email,
+            adres,
+            nationality,
+            postal_code,
             password,
             birth_date,
             phone_number,
@@ -238,11 +254,15 @@ userRouter.post("/admin", async (req, res) => {
         const passwordHashed = await bcrypt.hash(password, SALT_ROUNDS);
 
         const adminUser = new User({
+            client_id,
             first_name,
             last_name,
             gender,
             bsn,
             email,
+            adres,
+            nationality,
+            postal_code,
             password_hash: passwordHashed,
             birth_date,
             phone_number,
@@ -274,11 +294,15 @@ userRouter.put("/edit/:id", auth, async (req, res) => {
 
         // get the data out of the body
         const {
+            client_id,
             first_name,
             last_name,
             gender,
             bsn,
             email,
+            adres,
+            nationality,
+            postal_code,
             birth_date,
             phone_number,
             personalization_enabled
@@ -303,11 +327,15 @@ userRouter.put("/edit/:id", auth, async (req, res) => {
         const updated = await User.findByIdAndUpdate(
             id,
             {
+                ...(client_id && {client_id}),
                 ...(first_name && {first_name}),
                 ...(last_name && {last_name}),
                 ...(gender && {gender}),
                 ...(bsn && {bsn}),
                 ...(email && {email}),
+                ...(adres && {adres}),
+                ...(nationality && {nationality}),
+                ...(postal_code && {postal_code}),
                 ...(birth_date && {birth_date}),
                 ...(phone_number && {phone_number}),
                 ...(personalization_enabled !== undefined && {personalization_enabled})
