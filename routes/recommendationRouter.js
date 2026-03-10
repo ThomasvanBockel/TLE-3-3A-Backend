@@ -36,7 +36,7 @@ recommendationRouter.get("/user/:userId", async (req, res) => {
             return res.status(400).json({ message: "Invalid user id" });
         }
 
-        const limit = req.query.limit ? Number(req.query.limit) : 10;
+        const limit = req.query.limit ? Number(req.query.limit) : 4;
         const persist = req.query.persist !== "false";
         const debug = req.query.debug === "true";
 
