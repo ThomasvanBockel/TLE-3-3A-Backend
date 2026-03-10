@@ -82,13 +82,14 @@ inquiryRouter.get("/token/:token", async (req, res) => {
 
 inquiryRouter.post("/", async (req, res) => {
     try {
-        const {user_id, type_id, created_at, content, status, question} = req.body;
+        const {client_id, user_id, type_id, created_at, content, status, question} = req.body;
 
-        if (!user_id || !type_id || !created_at || !content || !status || !question) {
+        if (!client_id || !user_id || !type_id || !created_at || !content || !status || !question) {
             return res.status(400).json({message: "Missing required fields"});
         }
         const activeStatuses = ["OPEN", "IN_PROGRESS"];
         const alreadyActiveSameType = await Inquiry.findOne({
+            client_id,
             user_id,
             type_id,
             status: {$in: activeStatuses}
@@ -104,6 +105,7 @@ inquiryRouter.post("/", async (req, res) => {
         for (let attempt = 1; attempt <= 5; attempt++) {
             try {
                 const inquiry = new Inquiry({
+                    client_id,
                     user_id,
                     type_id,
                     created_at: new Date(created_at),
@@ -136,7 +138,7 @@ inquiryRouter.put("/:id", async (req, res) => {
     try {
         const {id} = req.params;
 
-        const allowed = ["type_id", "created_at", "content", "token", "status", "question", "user_id"];
+        const allowed = ["client_id", "type_id", "created_at", "content", "token", "status", "question", "user_id"];
         const update = {};
 
         for (const key of allowed) {
