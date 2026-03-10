@@ -3,6 +3,8 @@ import User from "../models/User.js";
 import bcrypt from "bcrypt"
 import mongoose from "mongoose";
 import jwt from 'jsonwebtoken';
+import {adminOnly} from "../middleware/adminOnly.js";
+import {auth} from "../middleware/auth.js";
 
 const userRouter = express.Router()
 userRouter.use((req, res, next) => {
@@ -21,7 +23,7 @@ userRouter.use((req, res, next) => {
 });
 
 // /api/user/admin/edit/:id -> admin can edit user data
-userRouter.put("/admin/edit/:id", async (req, res) => {
+userRouter.put("/admin/edit/:id", auth, adminOnly, async (req, res) => {
     try {
         // get the user id from the uri
         const id = req.params.id
@@ -104,11 +106,19 @@ userRouter.get("/", async (req, res) => {
     }
 })
 
-// get data from one user with email
-userRouter.get("/user", async (req, res) => {
+// get data from one user with id
+userRouter.get("/:id", auth, async (req, res) => {
     try {
-        // find the user with there Email
-        const user = await User.findOne({email: req.body.email})
+        const id = req.params.id
+
+        // find the user with there id
+        const user = await User.findById(id)
+
+
+        if (req.auth.sub !== id) {
+            return res.status(401).json({message: "you can only edit your own information"})
+        }
+
         if (!user) {
             return res.status(404).json("user not found")
         }
@@ -250,11 +260,14 @@ userRouter.post("/admin", async (req, res) => {
 
 
 // edit for the user
-userRouter.put("/edit/:id", async (req, res) => {
+userRouter.put("/edit/:id", auth, async (req, res) => {
     try {
         // get the user id from the uri
         const id = req.params.id
 
+        if (req.auth.sub !== id) {
+            return res.status(401).json({message: "you can only edit your own information"})
+        }
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({message: "id is niet valid"});
         }
@@ -311,7 +324,7 @@ userRouter.put("/edit/:id", async (req, res) => {
         console.log(e)
     }
 })
-userRouter.delete("/delete/:id", async (req, res) => {
+userRouter.delete("/delete/:id", auth, async (req, res) => {
     try {
         // get there id from the uri
         const id = req.params.id
