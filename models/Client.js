@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import "dotenv/config";
 
 const clientSchema = new mongoose.Schema(
     {
@@ -6,7 +7,7 @@ const clientSchema = new mongoose.Schema(
         is_active: {type: Boolean, required: true, default: true}
     },
     {
-        timestamps: {createdAt: "created_at", updatedAt: false},
+        timestamps: {createdAt: "created_at", updatedAt: "updated_at"},
         toJSON: {
             virtuals: true,
             versionKey: false,
