@@ -9,24 +9,18 @@ const app = express();
 app.use(express.json())
 
 app.use((req, res, next) => {
-    res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization");
+    const acceptHeader = req.headers["accept"];
+    const method = req.method
 
-    if (req.method === "OPTIONS" && (req.path === `${process.env.BASE_URI}content-items ` || req.path === `${process.env.BASE_URI}content-items/`)) {
-        res.header("Allow", "GET, POST, OPTIONS");
-        res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-        return res.sendStatus(204);
+    res.set("Access-Control-Allow-Origin", "*")
+
+    console.log(`Client accepteert: ${acceptHeader}`);
+    if (acceptHeader.includes("application/json") || method === "OPTIONS") {
+        console.log(`this is JSON`)
+        next();
+    } else {
+        res.status(400).send("Illegal format");
     }
-
-    if (req.method === "OPTIONS" && req.path.startsWith(`${process.env.BASE_URI}content-items/`)) {
-        res.header("Allow", "GET, PUT, DELETE, OPTIONS");
-        res.header("Access-Control-Allow-Methods", "GET, PUT, DELETE, OPTIONS");
-        return res.sendStatus(204);
-    }
-
-    res.header("Content-Type", "application/json");
-
-    next();
 });
 
 try {

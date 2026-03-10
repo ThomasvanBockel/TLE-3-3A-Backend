@@ -7,20 +7,24 @@ import {adminOnly} from "../middleware/adminOnly.js";
 import {auth} from "../middleware/auth.js";
 
 const userRouter = express.Router()
-userRouter.use((req, res, next) => {
-    const acceptHeader = req.headers["accept"];
-    const method = req.method
 
-    res.set("Access-Control-Allow-Origin", "*")
+userRouter.options("/", (req, res) => {
+    res.header("Allow", "POST, GET, OPTIONS")
 
-    console.log(`Client accepteert: ${acceptHeader}`);
-    if (acceptHeader.includes("application/json") || method === "OPTIONS") {
-        console.log(`this is JSON`)
-        next();
-    } else {
-        res.status(400).send("Illegal format");
-    }
-});
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+    res.setHeader("Access-Control-Allow-Origin", "*")
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept")
+    res.status(204).send()
+})
+userRouter.options("/:id", (req, res) => {
+    res.header("Allow", "PUT, GET, OPTIONS, DELETE")
+
+    res.setHeader("Access-Control-Allow-Methods", "GET, PUT, OPTIONS, DELETE")
+    res.setHeader("Access-Control-Allow-Origin", "*")
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept")
+    res.status(204).send()
+})
+
 
 // /api/user/admin/edit/:id -> admin can edit user data
 userRouter.put("/admin/edit/:id", auth, adminOnly, async (req, res) => {
