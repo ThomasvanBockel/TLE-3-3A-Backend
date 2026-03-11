@@ -120,7 +120,7 @@ userRouter.get("/:id", auth, async (req, res) => {
 
 
         if (req.auth.sub !== id) {
-            return res.status(401).json({message: "you can only edit your own information"})
+            return res.status(401).json({message: "you can only get your own information"})
         }
 
         if (!user) {
@@ -181,7 +181,7 @@ userRouter.post("/login", async (req, res) => {
         const password = req.body.password
         const is_match = await bcrypt.compare(password, user.password_hash);
         if (!is_match) {
-            return res.status(401).json("password is not correct")
+            return res.status(401).json("login information is not correct")
         }
 // JWT if it's a user login as a user if it's an admin login as an admin
         if (user.is_admin === 1) {

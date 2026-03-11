@@ -2,6 +2,7 @@ import express from "express";
 import mongoose from "mongoose";
 import router from "./routes/routeRouter.js"
 import dotenv from "dotenv";
+import inquiryTypeRouter from "./routes/inquiryTypeRouter.js";
 
 dotenv.config();
 
@@ -15,13 +16,20 @@ app.use((req, res, next) => {
     res.set("Access-Control-Allow-Origin", "*")
 
     console.log(`Client accepteert: ${acceptHeader}`);
-    if (acceptHeader.includes("application/json") || method === "OPTIONS") {
+    if (method === "OPTIONS") {
+        res.header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization");
+        return next();
+    }
+    if (!acceptHeader ||
+        acceptHeader.includes("application/json")
+    ) {
         console.log(`this is JSON`)
-        next();
+        return next();
     } else {
-        res.status(400).send("Illegal format");
+        return res.status(400).send("Illegal format");
     }
 });
+
 
 try {
     await mongoose.connect(process.env.MONGODB_URL)

@@ -1,8 +1,25 @@
 import express from "express";
 import Category from "../models/Category.js";
+import clientRouter from "./clientRouter.js";
 
 const categoryRouter = express.Router();
+categoryRouter.options("/", (req, res) => {
+    res.header("Allow", "POST, GET, OPTIONS")
 
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+    res.setHeader("Access-Control-Allow-Origin", "*")
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept")
+    res.status(204).send()
+})
+// options for /:id
+categoryRouter.options("/:id", (req, res) => {
+    res.header("Allow", "PUT, GET, OPTIONS, DELETE")
+
+    res.setHeader("Access-Control-Allow-Methods", "GET, PUT, OPTIONS, DELETE")
+    res.setHeader("Access-Control-Allow-Origin", "*")
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept")
+    res.status(204).send()
+})
 // helper (zelfde stijl als bij admin endpoint)
 const requireAdmin = (req, res) => {
     const role = req.header("x-role");

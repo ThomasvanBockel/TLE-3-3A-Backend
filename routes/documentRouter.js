@@ -1,36 +1,29 @@
 import express from "express";
 import Document from "../models/Document.js";
-
+import inquiryTypeRouter from "./inquiryTypeRouter.js";
 
 
 const documentRouter = express.Router();
 
 //headers en options
-documentRouter.use((req, res, next) => {
-    console.log("Check accept header");
-
-    if (req.method === "OPTIONS") {
-        res.header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization");
-        return next();
-    }
-
-    if (!req.headers.accept ||
-        req.headers.accept.includes("application/json") ||
-        req.headers.accept.includes("*/*") ||
-        req.headers.accept.includes("text/html")) {
-        return next();
-    }
-
-    return res.status(406).json({
-        message: "Alleen application/json wordt ondersteund! Ben je de accept header vergeten?",
-    });
-});
-
 documentRouter.options("/", (req, res) => {
-    res.header("Allow", "GET, POST, OPTIONS");
-    res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.status(204).send();
-});
+    res.header("Allow", "POST, GET, OPTIONS")
+
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+    res.setHeader("Access-Control-Allow-Origin", "*")
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept")
+    res.status(204).send()
+})
+// options for /:id
+documentRouter.options("/:id", (req, res) => {
+    res.header("Allow", "PUT, GET, OPTIONS, DELETE")
+
+    res.setHeader("Access-Control-Allow-Methods", "GET, PUT, OPTIONS, DELETE")
+    res.setHeader("Access-Control-Allow-Origin", "*")
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept")
+    res.status(204).send()
+})
+
 
 //get alles
 documentRouter.get("/", async (req, res) => {
@@ -80,7 +73,7 @@ documentRouter.post("/", async (req, res) => {
 });
 
 //get met id
-documentRouter.get("/:id", async(req, res) => {
+documentRouter.get("/:id", async (req, res) => {
     console.log("Details opgehaald")
     try {
         const documentId = req.params.id;
@@ -105,10 +98,10 @@ documentRouter.put("/:id", async (req, res) => {
             end_date: req.body.end_date,
             start_date: req.body.start_date,
             extended: req.body.extended
-        }, { new: true, runValidators: true });
+        }, {new: true, runValidators: true});
 
         if (!updatedDocument) {
-            return res.status(404).json({ message: "Document niet gevonden" });
+            return res.status(404).json({message: "Document niet gevonden"});
         }
 
         res.json(updatedDocument);
@@ -129,10 +122,10 @@ documentRouter.delete("/:id", async (req, res) => {
         const deletedDocument = await Document.findByIdAndDelete(documentId);
 
         if (!deletedDocument) {
-            return res.status(404).json({ message: "Document niet gevonden" });
+            return res.status(404).json({message: "Document niet gevonden"});
         }
 
-        res.json({ message: "Document verwijderd" });
+        res.json({message: "Document verwijderd"});
     } catch (e) {
         console.error("Error bij verwijderen document:", e);
         res.status(400).json({
