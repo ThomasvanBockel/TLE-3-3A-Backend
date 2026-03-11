@@ -36,7 +36,7 @@ const contentItemSchema = new mongoose.Schema(
             required: false
         },
 
-        image: {type: Buffer, required: true},
+        image: {type: Buffer, required: false},
     },
     {
         timestamps: {createdAt: "created_at", updatedAt: "updated_at"},
