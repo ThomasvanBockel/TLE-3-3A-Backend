@@ -1,36 +1,33 @@
 import express from "express";
 import Client from "../models/Client.js";
+import contentItemRouter from "./contentItemRouter.js";
 
 const clientRouter = express.Router();
 
 // GET all clients
 //header
-clientRouter.use((req, res, next) => {
-    console.log("Check accept header");
+options
+clientRouter.options("/", (req, res) => {
+    res.header("Allow", "POST, GET, OPTIONS")
 
-    if (req.method === "OPTIONS") {
-        res.header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization");
-        return next();
-    }
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+    res.setHeader("Access-Control-Allow-Origin", "*")
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept")
+    res.status(204).send()
+})
+// options for /:id
+clientRouter.options("/:id", (req, res) => {
+    res.header("Allow", "PUT, GET, OPTIONS, DELETE")
 
-    if (!req.headers.accept ||
-        req.headers.accept.includes("application/json") ||
-        req.headers.accept.includes("*/*") ||
-        req.headers.accept.includes("text/html")) {
-        return next();
-    }
+    res.setHeader("Access-Control-Allow-Methods", "GET, PUT, OPTIONS, DELETE")
+    res.setHeader("Access-Control-Allow-Origin", "*")
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept")
+    res.status(204).send()
+})
 
-    return res.status(406).json({
-        message: "Alleen application/json wordt ondersteund! Ben je de accept header vergeten?",
-    });
-});
 
 //options
-clientRouter.options("/", (req, res) => {
-    res.header("Allow", "GET, POST, OPTIONS");
-    res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.status(204).send();
-});
+
 
 // get all
 clientRouter.get("/", async (req, res) => {
@@ -47,7 +44,7 @@ clientRouter.get("/", async (req, res) => {
 clientRouter.post("/", async (req, res) => {
     try {
         if (!req.body.name || !req.body.is_active) {
-            return res.status(400).json({ message: "Name is required" });
+            return res.status(400).json({message: "Name is required"});
         }
 
         const client = new Client({
@@ -110,11 +107,11 @@ clientRouter.put("/:id", async (req, res) => {
             name: req.body.name,
             is_active: req.body.is_active ?? true
         };
-        const updatedClient = await Client.findByIdAndUpdate(clientId, updatedData, { new: true });
+        const updatedClient = await Client.findByIdAndUpdate(clientId, updatedData, {new: true});
         res.json(updatedClient);
     } catch (e) {
         console.error("Error updating client by ID:", e);
-        res.status(500).json({ message: "Server error" });
+        res.status(500).json({message: "Server error"});
         const {name, is_active} = req.body;
 
         const client = await Client.findByIdAndUpdate(

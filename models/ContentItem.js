@@ -5,8 +5,6 @@ const contentItemSchema = new mongoose.Schema(
     {
         legacyId: {type: Number, required: false, unique: true, sparse: true},
 
-        client_id: {type: mongoose.Schema.Types.ObjectId, ref: "Client", required: true},
-
         title: {type: String, required: true},
         body: {type: String, required: true},
 

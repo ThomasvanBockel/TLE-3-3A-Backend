@@ -2,6 +2,7 @@ import express from "express";
 import mongoose from "mongoose";
 import router from "./routes/routeRouter.js"
 import dotenv from "dotenv";
+import inquiryTypeRouter from "./routes/inquiryTypeRouter.js";
 
 dotenv.config();
 
@@ -9,25 +10,26 @@ const app = express();
 app.use(express.json())
 
 app.use((req, res, next) => {
-    res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization");
+    const acceptHeader = req.headers["accept"];
+    const method = req.method
 
-    if (req.method === "OPTIONS" && (req.path === `${process.env.BASE_URI}content-items ` || req.path === `${process.env.BASE_URI}content-items/`)) {
-        res.header("Allow", "GET, POST, OPTIONS");
-        res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-        return res.sendStatus(204);
+    res.set("Access-Control-Allow-Origin", "*")
+
+    console.log(`Client accepteert: ${acceptHeader}`);
+    if (method === "OPTIONS") {
+        res.header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization");
+        return next();
     }
-
-    if (req.method === "OPTIONS" && req.path.startsWith(`${process.env.BASE_URI}content-items/`)) {
-        res.header("Allow", "GET, PUT, DELETE, OPTIONS");
-        res.header("Access-Control-Allow-Methods", "GET, PUT, DELETE, OPTIONS");
-        return res.sendStatus(204);
+    if (!acceptHeader ||
+        acceptHeader.includes("application/json")
+    ) {
+        console.log(`this is JSON`)
+        return next();
+    } else {
+        return res.status(400).send("Illegal format");
     }
-
-    res.header("Content-Type", "application/json");
-
-    next();
 });
+
 
 try {
     await mongoose.connect(process.env.MONGODB_URL)

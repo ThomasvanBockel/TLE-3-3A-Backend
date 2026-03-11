@@ -7,20 +7,24 @@ import {adminOnly} from "../middleware/adminOnly.js";
 import {auth} from "../middleware/auth.js";
 
 const userRouter = express.Router()
-userRouter.use((req, res, next) => {
-    const acceptHeader = req.headers["accept"];
-    const method = req.method
 
-    res.set("Access-Control-Allow-Origin", "*")
+userRouter.options("/", (req, res) => {
+    res.header("Allow", "POST, GET, OPTIONS")
 
-    console.log(`Client accepteert: ${acceptHeader}`);
-    if (acceptHeader.includes("application/json") || method === "OPTIONS") {
-        console.log(`this is JSON`)
-        next();
-    } else {
-        res.status(400).send("Illegal format");
-    }
-});
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+    res.setHeader("Access-Control-Allow-Origin", "*")
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept")
+    res.status(204).send()
+})
+userRouter.options("/:id", (req, res) => {
+    res.header("Allow", "PUT, GET, OPTIONS, DELETE")
+
+    res.setHeader("Access-Control-Allow-Methods", "GET, PUT, OPTIONS, DELETE")
+    res.setHeader("Access-Control-Allow-Origin", "*")
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept")
+    res.status(204).send()
+})
+
 
 // /api/user/admin/edit/:id -> admin can edit user data
 userRouter.put("/admin/edit/:id", auth, adminOnly, async (req, res) => {
@@ -124,7 +128,7 @@ userRouter.get("/:id", auth, async (req, res) => {
 
 
         if (req.auth.sub !== id) {
-            return res.status(401).json({message: "you can only edit your own information"})
+            return res.status(401).json({message: "you can only get your own information"})
         }
 
         if (!user) {
@@ -189,7 +193,7 @@ userRouter.post("/login", async (req, res) => {
         const password = req.body.password
         const is_match = await bcrypt.compare(password, user.password_hash);
         if (!is_match) {
-            return res.status(401).json("password is not correct")
+            return res.status(401).json("login information is not correct")
         }
 // JWT if it's a user login as a user if it's an admin login as an admin
         if (user.is_admin === 1) {
