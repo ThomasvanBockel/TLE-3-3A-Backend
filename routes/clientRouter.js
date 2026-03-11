@@ -6,7 +6,7 @@ const clientRouter = express.Router();
 
 // GET all clients
 //header
-options
+
 clientRouter.options("/", (req, res) => {
     res.header("Allow", "POST, GET, OPTIONS")
 
