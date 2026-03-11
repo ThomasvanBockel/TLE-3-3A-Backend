@@ -10,8 +10,15 @@ import bcrypt from "bcrypt";
 
 const seedRouter = express.Router();
 
-seedRouter.post("/seed", async (req, res) => {
+seedRouter.post("/", async (req, res) => {
     try {
+        await Client.deleteMany({});
+        await User.deleteMany({});
+        await Category.deleteMany({});
+        await Document.deleteMany({});
+        await DocumentType.deleteMany({});
+        await InquiryType.deleteMany({});
+        await Inquiry.deleteMany({});
         const randomDate = (start, end) => new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
 
         // de clients
@@ -94,7 +101,7 @@ seedRouter.post("/seed", async (req, res) => {
         const inquiry_WMO = new Inquiry({
             client_id: client_3B._id, user_id: user_3B._id, type_id: inquiryTypes[0]._id,
             created_at: new Date(), content: "Ik heb een aanvraag voor een WMO-voorziening ingediend...",
-            token: "seed-token-wmo-001", status: "OPEN",
+            token: "seed-token-wmo-001", status: "In behandeling",
             question: "Wat is de status van mijn WMO-aanvraag?"
         });
         await inquiry_WMO.save();
@@ -113,8 +120,12 @@ seedRouter.post("/seed", async (req, res) => {
             }))
         );
 
+        res.status(200).json({ message: "Seeding succesvol!" });
+
     } catch (e) {
         console.error("Error bij seeden van data:", e);
         return res.status(500).json({ message: "Server error tijdens seeden" });
     }
 });
+
+export default seedRouter;

@@ -9,6 +9,7 @@ import documentRouter from "./documentRouter.js";
 import documentType from "./documentTypeRouter.js";
 import apiRouter from "./apiRouter.js";
 import clientRouter from "./clientRouter.js";
+import seedRouter from "./seedRouter.js";
 
 const router = express.Router()
 router.use("/api/user", userRouter)
@@ -22,5 +23,6 @@ router.use("/api/inquiry-types", inquiryTypeRouter)
 router.use("/api/document-types", documentType)
 router.use("/api", apiRouter)
 router.use("/api/clients", clientRouter)
+router.use("/api/seed", seedRouter)
 
 export default router
