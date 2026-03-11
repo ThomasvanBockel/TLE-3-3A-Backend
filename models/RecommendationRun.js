@@ -5,8 +5,35 @@ const recommendationRunSchema = new mongoose.Schema(
     {
         legacyId: {type: Number, required: false, unique: true, sparse: true},
 
-        user_id: {type: mongoose.Schema.Types.ObjectId, ref: "User", required: true},
-        content_id: {type: mongoose.Schema.Types.ObjectId, ref: "ContentItem", required: false},
+        client_id: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Client",
+            required: true
+        },
+
+        user_id: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: true
+        },
+
+        content_id: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "ContentItem",
+            required: false
+        },
+
+        trigger_type: {
+            type: String,
+            required: false,
+            default: "manual"
+        },
+
+        status: {
+            type: String,
+            required: false,
+            default: "completed"
+        }
     },
     {
         timestamps: {createdAt: "created_at", updatedAt: false},
@@ -14,6 +41,7 @@ const recommendationRunSchema = new mongoose.Schema(
             virtuals: true,
             versionKey: false,
             transform: (doc, ret) => {
+                ret.id = ret._id;
                 ret._links = {
                     self: {href: `${process.env.BASE_URI_RECOMMENDATION_RUNS}${ret._id}`},
                     collection: {href: `${process.env.BASE_URI_RECOMMENDATION_RUNS}`},
