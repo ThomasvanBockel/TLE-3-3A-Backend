@@ -114,11 +114,11 @@ inquiryRouter.post("/", publicLimiter, publicApiKey, auth, async (req, res) => {
     try {
         const {type_id, created_at, content, status, question} = req.body;
 
+        const user_id = req.userId;
+
         if (!type_id || !created_at || !content || !status || !question) {
             return res.status(400).json({message: "Missing required fields"});
         }
-
-        const user_id = req.auth.sub;
 
         const activeStatuses = ["OPEN", "IN_PROGRESS"];
         const alreadyActiveSameType = await Inquiry.findOne({
