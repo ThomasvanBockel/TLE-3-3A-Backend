@@ -171,6 +171,7 @@ export async function generateRecommendations({ userId, limit = 10, persist = tr
 
     const totalContentCount = await ContentItem.countDocuments({});
     const eligibleContentItems = await ContentItem.find({ status: { $ne: "ARCHIVED" } })
+        // remove status and ___v
         .select("-status -__v")
         .lean();
 

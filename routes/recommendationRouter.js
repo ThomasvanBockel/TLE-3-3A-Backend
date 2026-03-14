@@ -42,6 +42,7 @@ recommendationRouter.get("/guest", async (req, res) => {
         const safeLimit = Math.max(1, Math.min(limit, 20));
 
         const recentItems = await ContentItem.find({ status: { $ne: "ARCHIVED" } })
+            // remove status and ___v 
             .select("-status -__v")
             .sort({ created_at: -1 })
             .limit(safeLimit)
