@@ -35,23 +35,23 @@ recommendationRouter.options("/guest", (req, res) => {
     res.status(204).send();
 });
 
-//get route to show random items for users who are not logged in
+//get route to show the newest items for users who are not logged in
 recommendationRouter.get("/guest", async (req, res) => {
     try {
         const limit = req.query.limit ? Number(req.query.limit) : 4;
         const safeLimit = Math.max(1, Math.min(limit, 20));
 
-        const randomItems = await ContentItem.aggregate([
-            { $match: { status: { $ne: "ARCHIVED" } } },
-            { $sample: { size: safeLimit } },
-            { $project: { status: 0, __v: 0 } }
-        ]);
+        const recentItems = await ContentItem.find({ status: { $ne: "ARCHIVED" } })
+            .select("-status -__v")
+            .sort({ created_at: -1 })
+            .limit(safeLimit)
+            .lean();
 
         return res.status(200).json({
             personalization_enabled: false,
-            mode: "guest_random",
-            total: randomItems.length,
-            items: randomItems
+            mode: "guest_recent",
+            total: recentItems.length,
+            items: recentItems
         });
     } catch (error) {
         console.log(error);
