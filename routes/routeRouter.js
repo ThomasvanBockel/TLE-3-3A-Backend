@@ -8,6 +8,7 @@ import documentRouter from "./documentRouter.js";
 import documentTypeRouter from "./documentTypeRouter.js";
 import apiRouter from "./apiRouter.js";
 import clientRouter from "./clientRouter.js";
+import reportRouter from "./reportRouter.js";
 
 const router = express.Router();
 
@@ -20,5 +21,6 @@ router.use("/api/inquiry-types", inquiryTypeRouter);
 router.use("/api/document-types", documentTypeRouter);
 router.use("/api", apiRouter);
 router.use("/api/clients", clientRouter);
+router.use("/api/reports", reportRouter);
 
 export default router;
