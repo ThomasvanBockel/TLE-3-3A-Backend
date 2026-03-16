@@ -12,13 +12,13 @@ const seedRouter = express.Router();
 
 seedRouter.post("/", async (req, res) => {
     try {
-        await Client.deleteMany({});
-        await User.deleteMany({});
-        await Category.deleteMany({});
-        await Document.deleteMany({});
-        await DocumentType.deleteMany({});
-        await InquiryType.deleteMany({});
-        await Inquiry.deleteMany({});
+        // await Client.deleteMany({});
+        // await User.deleteMany({});
+        // await Category.deleteMany({});
+        // await Document.deleteMany({});
+        // await DocumentType.deleteMany({});
+        // await InquiryType.deleteMany({});
+        // await Inquiry.deleteMany({});
         const randomDate = (start, end) => new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
 
         // de clients
