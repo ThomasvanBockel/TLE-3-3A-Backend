@@ -27,14 +27,38 @@ async function haalNaam() {
     });
 
     const data = await response.json();
+
     const lijst = document.getElementById("naam-client");
+    lijst.innerHTML = "";
 
     data.forEach(app => {
         const item = document.createElement("li");
-        item.textContent = app.name;
-        item.textContent += app.is_active ? " (actief)" : " (inactief)";
+        const appId = app.id;
+
+
+        item.textContent = `${app.name} ${app.is_active ? "Actief" : "Inactief"} `;
+
+        const btn = document.createElement("button");
+        btn.textContent = app.is_active ? "Deactiveren" : "Activeren";
+        btn.onclick = () => toggleStatus(appId);
+
+        item.appendChild(btn);
         lijst.appendChild(item);
     });
+}
+
+async function toggleStatus(id) {
+    const response = await fetch(`/api/client-apps/${id}`, {
+        method: "PATCH",
+        headers: { Accept: "application/json" }
+    });
+
+    if (response.ok) {
+        haalNaam();
+    } else {
+        const errorData = await response.json();
+        console.error("Fout bij updaten:", errorData.message);
+    }
 }
 
 haalNaam();

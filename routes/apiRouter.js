@@ -49,11 +49,18 @@ apiRouter.delete("/client-apps/:id", async (req, res) => {
 
 apiRouter.patch("/client-apps/:id", async (req, res) => {
     try {
+        if (!req.params.id || req.params.id === "undefined") {
+            return res.status(400).json({ message: "Geen geldige ID meegegeven" });
+        }
+
         const clientApp = await ClientApp.findById(req.params.id);
+        if (!clientApp) return res.status(404).json({ message: "App niet gevonden" });
+
         clientApp.is_active = !clientApp.is_active;
         await clientApp.save();
-        res.status(200).json({ message: "Status aangepast", is_active: clientApp.is_active });
+        res.status(200).json({ is_active: clientApp.is_active });
     } catch (error) {
+        console.error("Patch error:", error);
         res.status(500).json({ message: "Server error" });
     }
 });
