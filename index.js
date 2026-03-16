@@ -2,12 +2,12 @@ import express from "express";
 import mongoose from "mongoose";
 import router from "./routes/routeRouter.js"
 import dotenv from "dotenv";
-import inquiryTypeRouter from "./routes/inquiryTypeRouter.js";
 
 dotenv.config();
 
 const app = express();
 app.use(express.json())
+app.use(express.static('public'));
 
 app.use((req, res, next) => {
     const acceptHeader = req.headers["accept"];
