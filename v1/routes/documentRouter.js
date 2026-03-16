@@ -1,34 +1,35 @@
 import express from "express";
 import Document from "../../models/Document.js";
-import inquiryTypeRouter from "./inquiryTypeRouter.js";
-
+import {publicApiKey} from "../middlewares/publicApi.js";
+import {auth} from "../middleware/auth.js";
+import {adminOnly} from "../middleware/adminOnly.js";
+import {publicLimiter} from "../middlewares/rateLimit.js";
 
 const documentRouter = express.Router();
 
-//headers en options
+// OPTIONS open laten
 documentRouter.options("/", (req, res) => {
-    res.header("Allow", "POST, GET, OPTIONS")
+    res.header("Allow", "GET, POST, OPTIONS");
+    res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.status(204).send();
+});
 
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-    res.setHeader("Access-Control-Allow-Origin", "*")
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept")
-    res.status(204).send()
-})
-// options for /:id
 documentRouter.options("/:id", (req, res) => {
-    res.header("Allow", "PUT, GET, OPTIONS, DELETE")
+    res.header("Allow", "GET, PUT, DELETE, OPTIONS");
+    res.header("Access-Control-Allow-Methods", "GET, PUT, DELETE, OPTIONS");
+    res.status(204).send();
+});
 
-    res.setHeader("Access-Control-Allow-Methods", "GET, PUT, OPTIONS, DELETE")
-    res.setHeader("Access-Control-Allow-Origin", "*")
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept")
-    res.status(204).send()
-})
-
-
-//get alles
-documentRouter.get("/", async (req, res) => {
+// GET ALL - eigen documenten of alles voor admin binnen eigen client
+documentRouter.get("/", publicLimiter, publicApiKey, auth, async (req, res) => {
     try {
-        const documents = await Document.find({});
+        const filter = {client_id: req.clientId};
+
+        if (!req.auth.is_admin) {
+            filter.user_id = req.auth.sub;
+        }
+
+        const documents = await Document.find(filter);
 
         const collection = {
             items: documents,
@@ -40,9 +41,9 @@ documentRouter.get("/", async (req, res) => {
                     href: process.env.BASE_URI_DOCUMENT_TYPES
                 }
             }
-        }
+        };
 
-        res.json(collection);
+        res.status(200).json(collection);
     } catch (e) {
         console.error("Error bij ophalen documents:", e);
         res.status(500).json({
@@ -51,11 +52,12 @@ documentRouter.get("/", async (req, res) => {
     }
 });
 
-//post
-documentRouter.post("/", async (req, res) => {
+// CREATE - ingelogde user maakt eigen document binnen eigen client
+documentRouter.post("/", publicApiKey, auth, async (req, res) => {
     try {
         const document = new Document({
-            user_id: req.body.user_id,
+            client_id: req.clientId,
+            user_id: req.auth.sub,
             type_id: req.body.type_id,
             end_date: req.body.end_date,
             start_date: req.body.start_date,
@@ -63,7 +65,7 @@ documentRouter.post("/", async (req, res) => {
         });
 
         await document.save();
-        res.json(document);
+        res.status(201).json(document);
     } catch (e) {
         console.error("Error bij aanmaken document:", e);
         res.status(500).json({
@@ -72,39 +74,70 @@ documentRouter.post("/", async (req, res) => {
     }
 });
 
-//get met id
-documentRouter.get("/:id", async (req, res) => {
-    console.log("Details opgehaald")
+// GET ONE - eigen document of admin binnen eigen client
+documentRouter.get("/:id", publicApiKey, auth, async (req, res) => {
     try {
-        const documentId = req.params.id;
-        const document = await Document.findById(documentId);
-        res.json(document);
+        const document = await Document.findOne({
+            _id: req.params.id,
+            client_id: req.clientId
+        });
+
+        if (!document) {
+            return res.status(404).json({
+                message: "Resource van het document item bestaat niet op de server",
+            });
+        }
+
+        const isOwn = String(document.user_id) === String(req.auth.sub);
+        const isAdmin = req.auth.is_admin === true;
+
+        if (!isOwn && !isAdmin) {
+            return res.status(403).json({message: "Forbidden"});
+        }
+
+        res.status(200).json(document);
     } catch (e) {
         console.error("Error bij ophalen document item id:", e);
-        res.status(404).json({
-            message: "Resource van het document item bestaat niet op de server",
+        res.status(400).json({
+            message: "Invalid id",
         });
     }
 });
 
-//put
-documentRouter.put("/:id", async (req, res) => {
-    console.log("Update ontvangen")
+// UPDATE - eigen document of admin binnen eigen client
+documentRouter.put("/:id", publicApiKey, auth, async (req, res) => {
     try {
-        const documentId = req.params.id;
-        const updatedDocument = await Document.findByIdAndUpdate(documentId, {
-            user_id: req.body.user_id,
-            type_id: req.body.type_id,
-            end_date: req.body.end_date,
-            start_date: req.body.start_date,
-            extended: req.body.extended
-        }, {new: true, runValidators: true});
+        const existingDocument = await Document.findOne({
+            _id: req.params.id,
+            client_id: req.clientId
+        });
 
-        if (!updatedDocument) {
+        if (!existingDocument) {
             return res.status(404).json({message: "Document niet gevonden"});
         }
 
-        res.json(updatedDocument);
+        const isOwn = String(existingDocument.user_id) === String(req.auth.sub);
+        const isAdmin = req.auth.is_admin === true;
+
+        if (!isOwn && !isAdmin) {
+            return res.status(403).json({message: "Forbidden"});
+        }
+
+        const updatedDocument = await Document.findOneAndUpdate(
+            {
+                _id: req.params.id,
+                client_id: req.clientId
+            },
+            {
+                type_id: req.body.type_id,
+                end_date: req.body.end_date,
+                start_date: req.body.start_date,
+                extended: req.body.extended
+            },
+            {new: true, runValidators: true}
+        );
+
+        res.status(200).json(updatedDocument);
     } catch (e) {
         console.error("Error bij updaten document:", e);
         res.status(400).json({
@@ -114,18 +147,19 @@ documentRouter.put("/:id", async (req, res) => {
     }
 });
 
-//delete
-documentRouter.delete("/:id", async (req, res) => {
-    console.log("Delete ontvangen")
+// DELETE - alleen admin binnen eigen client
+documentRouter.delete("/:id", publicApiKey, auth, adminOnly, async (req, res) => {
     try {
-        const documentId = req.params.id;
-        const deletedDocument = await Document.findByIdAndDelete(documentId);
+        const deletedDocument = await Document.findOneAndDelete({
+            _id: req.params.id,
+            client_id: req.clientId
+        });
 
         if (!deletedDocument) {
             return res.status(404).json({message: "Document niet gevonden"});
         }
 
-        res.json({message: "Document verwijderd"});
+        res.status(200).json({message: "Document verwijderd"});
     } catch (e) {
         console.error("Error bij verwijderen document:", e);
         res.status(400).json({

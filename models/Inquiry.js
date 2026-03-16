@@ -5,6 +5,12 @@ const inquirySchema = new mongoose.Schema(
     {
         legacyId: {type: Number, required: false, unique: true, sparse: true},
 
+        client_id: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Client",
+            required: true
+        },
+
         user_id: {type: mongoose.Schema.Types.ObjectId, ref: "User", required: true},
         client_id: {type: mongoose.Schema.Types.ObjectId, ref: "Client", required: true},
         type_id: {type: mongoose.Schema.Types.ObjectId, ref: "InquiryType", required: true},
@@ -21,6 +27,7 @@ const inquirySchema = new mongoose.Schema(
             virtuals: true,
             versionKey: false,
             transform: (doc, ret) => {
+                ret.id = ret._id;
                 delete ret._id;
                 delete ret.user_id;
             },

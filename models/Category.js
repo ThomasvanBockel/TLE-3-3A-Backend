@@ -5,9 +5,13 @@ const categorySchema = new mongoose.Schema(
     {
         legacyId: {type: Number, required: false, unique: true, sparse: true},
 
-        client_id: {type: mongoose.Schema.Types.ObjectId, ref: "Client", required: true},
+        client_id: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Client",
+            required: true
+        },
 
-        name: {type: String, required: true, unique: true},
+        name: {type: String, required: true},
     },
     {
         timestamps: true,
@@ -15,6 +19,7 @@ const categorySchema = new mongoose.Schema(
             virtuals: true,
             versionKey: false,
             transform: (doc, ret) => {
+                ret.id = ret._id;
                 ret._links = {
                     self: {href: `${process.env.BASE_URI_CATEGORIES}${ret._id}`},
                     collection: {href: `${process.env.BASE_URI_CATEGORIES}`},
@@ -24,6 +29,9 @@ const categorySchema = new mongoose.Schema(
         },
     }
 );
+
+// naam uniek binnen dezelfde client
+categorySchema.index({client_id: 1, name: 1}, {unique: true});
 
 const Category = mongoose.model("Category", categorySchema);
 export default Category;

@@ -5,6 +5,12 @@ const auditLogSchema = new mongoose.Schema(
     {
         legacyId: {type: Number, required: false, unique: true, sparse: true},
 
+        client_id: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Client",
+            required: true
+        },
+
         user_id: {type: mongoose.Schema.Types.ObjectId, ref: "User", required: false},
         content_id: {type: mongoose.Schema.Types.ObjectId, ref: "ContentItem", required: true},
         client_id: {type: mongoose.Schema.Types.ObjectId, ref: "Client", required: true},
@@ -19,6 +25,7 @@ const auditLogSchema = new mongoose.Schema(
             virtuals: true,
             versionKey: false,
             transform: (doc, ret) => {
+                ret.id = ret._id;
                 ret._links = {
                     self: {href: `${process.env.BASE_URI_AUDIT_LOG}${ret._id}`},
                     collection: {href: `${process.env.BASE_URI_AUDIT_LOG}`},

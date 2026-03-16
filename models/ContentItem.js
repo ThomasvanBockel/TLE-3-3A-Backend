@@ -5,10 +5,22 @@ const contentItemSchema = new mongoose.Schema(
     {
         legacyId: {type: Number, required: false, unique: true, sparse: true},
 
+        client_id: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Client",
+            required: true
+        },
+
         title: {type: String, required: true},
         body: {type: String, required: true},
 
-        category_id: {type: mongoose.Schema.Types.ObjectId, ref: "Category", required: true},
+        category_ids: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "Category",
+                required: true
+            }
+        ],
 
         is_urgent: {type: Boolean, required: false},
         is_mandatory: {type: Boolean, required: false},
@@ -18,9 +30,13 @@ const contentItemSchema = new mongoose.Schema(
 
         status: {type: String, required: false, default: ""},
 
-        created_by: {type: mongoose.Schema.Types.ObjectId, ref: "User", required: false},
+        created_by: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: false
+        },
 
-        image: {type: Buffer, required: true},
+        image: {type: Buffer, required: false},
     },
     {
         timestamps: {createdAt: "created_at", updatedAt: "updated_at"},
@@ -28,6 +44,7 @@ const contentItemSchema = new mongoose.Schema(
             virtuals: true,
             versionKey: false,
             transform: (doc, ret) => {
+                ret.id = ret._id;
                 ret._links = {
                     self: {href: `${process.env.BASE_URI_CONTENT_ITEMS}${ret._id}`},
                     collection: {href: `${process.env.BASE_URI_CONTENT_ITEMS}`},
