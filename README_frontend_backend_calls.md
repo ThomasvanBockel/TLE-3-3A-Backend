@@ -35,6 +35,7 @@ Gebruik voor `POST`, `PUT` en `PATCH` meestal:
 
 ```http
 Content-Type: application/json
+Accept: application/json
 ```
 
 ### 2. API key
