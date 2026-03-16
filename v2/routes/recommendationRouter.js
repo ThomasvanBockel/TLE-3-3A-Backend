@@ -45,7 +45,8 @@ recommendationRouter.get("/guest", async (req, res) => {
 
         const randomItems = await ContentItem.aggregate([
             {$match: {status: {$ne: "ARCHIVED"}}},
-            {$sample: {size: safeLimit}}
+            { $sample: { size: safeLimit } },
+            { $project: { status: 0, __v: 0 } }
         ]);
 
         return res.status(200).json({

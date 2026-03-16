@@ -175,7 +175,7 @@ export async function generateRecommendations({clientId, userId, limit = 10, per
 
     const totalContentCount = await ContentItem.countDocuments({client_id: clientId});
     const eligibleContentItems = await ContentItem.find({client_id: clientId, status: {$ne: "ARCHIVED"}})
-        .select("title body content_type is_urgent is_mandatory created_at starts_at ends_at status")
+        .select("-status -__v")
         .lean();
 
 
