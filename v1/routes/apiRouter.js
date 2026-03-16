@@ -1,5 +1,5 @@
 import express from "express";
-import ClientApp from "../models/ClientApp.js";
+import ClientApp from "../../models/ClientApp.js";
 import {generateApiKey, hashApiKey} from "../utils/apiKey.js";
 
 const apiRouter = express.Router();

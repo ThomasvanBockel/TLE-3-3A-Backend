@@ -8,7 +8,7 @@ const contentItemSchema = new mongoose.Schema(
         title: {type: String, required: true},
         body: {type: String, required: true},
 
-        content_type: {type: String, required: true},
+        category_id: {type: mongoose.Schema.Types.ObjectId, ref: "Category", required: true},
 
         is_urgent: {type: Boolean, required: false},
         is_mandatory: {type: Boolean, required: false},

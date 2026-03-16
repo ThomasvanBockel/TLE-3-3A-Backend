@@ -6,7 +6,7 @@ const inquirySchema = new mongoose.Schema(
         legacyId: {type: Number, required: false, unique: true, sparse: true},
 
         user_id: {type: mongoose.Schema.Types.ObjectId, ref: "User", required: true},
-
+        client_id: {type: mongoose.Schema.Types.ObjectId, ref: "Client", required: true},
         type_id: {type: mongoose.Schema.Types.ObjectId, ref: "InquiryType", required: true},
         created_at: {type: Date, required: true},
 

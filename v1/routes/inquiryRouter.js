@@ -1,38 +1,33 @@
 import express from "express";
-import Inquiry from "../models/Inquiry.js";
+import Inquiry from "../../models/Inquiry.js";
 import crypto from "crypto";
+import inquiryTypeRouter from "./inquiryTypeRouter.js";
 
 const inquiryRouter = express.Router();
 
 function makeToken() {
     return crypto.randomBytes(24).toString("hex");
 }
+
 //inquiry/
-inquiryRouter.use((req, res, next) => {
-    console.log("Check accept header");
-
-    if (req.method === "OPTIONS") {
-        res.header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization");
-        return next();
-    }
-
-    if (!req.headers.accept ||
-        req.headers.accept.includes("application/json") ||
-        req.headers.accept.includes("*/*") ||
-        req.headers.accept.includes("text/html")) {
-        return next();
-    }
-
-    return res.status(406).json({
-        message: "Alleen application/json wordt ondersteund! Ben je de accept header vergeten?",
-    });
-});
-
 inquiryRouter.options("/", (req, res) => {
-    res.header("Allow", "GET, POST, OPTIONS");
-    res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.status(204).send();
-});
+    res.header("Allow", "POST, GET, OPTIONS")
+
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+    res.setHeader("Access-Control-Allow-Origin", "*")
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept")
+    res.status(204).send()
+})
+// options for /:id
+inquiryRouter.options("/:id", (req, res) => {
+    res.header("Allow", "PUT, PATCH, GET, OPTIONS, DELETE")
+
+    res.setHeader("Access-Control-Allow-Methods", "GET, PUT, PATCH, OPTIONS, DELETE")
+    res.setHeader("Access-Control-Allow-Origin", "*")
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept")
+    res.status(204).send()
+})
+
 
 // GET ALL - /api/inquiries?status=&type=&token=
 inquiryRouter.get("/", async (req, res) => {
@@ -82,13 +77,14 @@ inquiryRouter.get("/token/:token", async (req, res) => {
 
 inquiryRouter.post("/", async (req, res) => {
     try {
-        const {user_id, type_id, created_at, content, status, question} = req.body;
+        const {client_id, user_id, type_id, created_at, content, status, question} = req.body;
 
-        if (!user_id || !type_id || !created_at || !content || !status || !question) {
+        if (!client_id || !user_id || !type_id || !created_at || !content || !status || !question) {
             return res.status(400).json({message: "Missing required fields"});
         }
         const activeStatuses = ["OPEN", "IN_PROGRESS"];
         const alreadyActiveSameType = await Inquiry.findOne({
+            client_id,
             user_id,
             type_id,
             status: {$in: activeStatuses}
@@ -104,6 +100,7 @@ inquiryRouter.post("/", async (req, res) => {
         for (let attempt = 1; attempt <= 5; attempt++) {
             try {
                 const inquiry = new Inquiry({
+                    client_id,
                     user_id,
                     type_id,
                     created_at: new Date(created_at),
@@ -136,7 +133,7 @@ inquiryRouter.put("/:id", async (req, res) => {
     try {
         const {id} = req.params;
 
-        const allowed = ["type_id", "created_at", "content", "token", "status", "question", "user_id"];
+        const allowed = ["client_id", "type_id", "created_at", "content", "token", "status", "question", "user_id"];
         const update = {};
 
         for (const key of allowed) {

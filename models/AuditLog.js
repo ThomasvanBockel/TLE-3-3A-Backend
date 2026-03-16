@@ -7,6 +7,7 @@ const auditLogSchema = new mongoose.Schema(
 
         user_id: {type: mongoose.Schema.Types.ObjectId, ref: "User", required: false},
         content_id: {type: mongoose.Schema.Types.ObjectId, ref: "ContentItem", required: true},
+        client_id: {type: mongoose.Schema.Types.ObjectId, ref: "Client", required: true},
 
         type_request: {type: String, required: true},
         before_state: {type: mongoose.Schema.Types.Mixed, required: false},

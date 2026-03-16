@@ -10,6 +10,7 @@
     "dev": "node --env-file=.env --watch index.js"
   },
   "dependencies": {
+    "@huggingface/transformers": "^3.8.1",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",

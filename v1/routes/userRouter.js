@@ -1,5 +1,5 @@
 import express from "express";
-import User from "../models/User.js";
+import User from "../../models/User.js";
 import bcrypt from "bcrypt"
 import mongoose from "mongoose";
 import jwt from 'jsonwebtoken';
@@ -7,20 +7,24 @@ import {adminOnly} from "../middleware/adminOnly.js";
 import {auth} from "../middleware/auth.js";
 
 const userRouter = express.Router()
-userRouter.use((req, res, next) => {
-    const acceptHeader = req.headers["accept"];
-    const method = req.method
 
-    res.set("Access-Control-Allow-Origin", "*")
+userRouter.options("/", (req, res) => {
+    res.header("Allow", "POST, GET, OPTIONS")
 
-    console.log(`Client accepteert: ${acceptHeader}`);
-    if (acceptHeader.includes("application/json") || method === "OPTIONS") {
-        console.log(`this is JSON`)
-        next();
-    } else {
-        res.status(400).send("Illegal format");
-    }
-});
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+    res.setHeader("Access-Control-Allow-Origin", "*")
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept")
+    res.status(204).send()
+})
+userRouter.options("/:id", (req, res) => {
+    res.header("Allow", "PUT, GET, OPTIONS, DELETE")
+
+    res.setHeader("Access-Control-Allow-Methods", "GET, PUT, OPTIONS, DELETE")
+    res.setHeader("Access-Control-Allow-Origin", "*")
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept")
+    res.status(204).send()
+})
+
 
 // /api/user/admin/edit/:id -> admin can edit user data
 userRouter.put("/admin/edit/:id", auth, adminOnly, async (req, res) => {
@@ -33,11 +37,15 @@ userRouter.put("/admin/edit/:id", auth, adminOnly, async (req, res) => {
 
         // get the user data
         const {
+            client_id,
             first_name,
             last_name,
             gender,
             bsn,
             email,
+            adres,
+            nationality,
+            postal_code,
             birth_date,
             phone_number,
             is_admin,
@@ -64,11 +72,15 @@ userRouter.put("/admin/edit/:id", auth, adminOnly, async (req, res) => {
         const updated = await User.findByIdAndUpdate(
             id,
             {
+                ...(client_id && {client_id}),
                 ...(first_name && {first_name}),
                 ...(last_name && {last_name}),
                 ...(gender && {gender}),
                 ...(bsn && {bsn}),
                 ...(email && {email}),
+                ...(adres && {adres}),
+                ...(nationality && {nationality}),
+                ...(postal_code && {postal_code}),
                 ...(birth_date && {birth_date}),
                 ...(is_admin && {is_admin}),
                 ...(phone_number && {phone_number}),
@@ -116,7 +128,7 @@ userRouter.get("/:id", auth, async (req, res) => {
 
 
         if (req.auth.sub !== id) {
-            return res.status(401).json({message: "you can only edit your own information"})
+            return res.status(401).json({message: "you can only get your own information"})
         }
 
         if (!user) {
@@ -145,10 +157,14 @@ userRouter.post("/register", async (req, res) => {
         }
 
         const user = new User({
+            client_id: req.body.client_id,
             first_name: req.body.first_name,
             last_name: req.body.last_name,
             gender: req.body.gender,
             email: req.body.email,
+            adres: req.body.adres,
+            nationality: req.body.nationality,
+            postal_code: req.body.postal_code,
             password_hash: passwordHashed,
             birth_date: req.body.birth_date,
             phone_number: req.body.phone_number,
@@ -177,9 +193,27 @@ userRouter.post("/login", async (req, res) => {
         const password = req.body.password
         const is_match = await bcrypt.compare(password, user.password_hash);
         if (!is_match) {
-            return res.status(401).json("password is not correct")
+            return res.status(401).json("login information is not correct")
         }
 // JWT if it's a user login as a user if it's an admin login as an admin
+        if (user.is_admin === 1) {
+            const role = req.header("x-role");
+            const payload = {sub: user.id, role: 'admin'};
+            const secret = process.env.JWT_SECRET;
+            const token = await jwt.sign(payload, secret, {
+                expiresIn: '1h'
+            });
+            return res.status(200).json({message: "login succes", token, user, role})
+        } else {
+            const payload = {sub: user.id, role: 'user'};
+            const role = req.header("x-role");
+            const secret = process.env.JWT_SECRET;
+            const token = await jwt.sign(payload, secret, {
+                expiresIn: '1h'
+            });
+            return res.status(200).json({message: "login succes", token, user, role})
+        }
+        // JWT if its a user login as a user if its a admin login as a admin
         if (user.is_admin === 1) {
             const role = req.header("x-role");
             const payload = {sub: user.id, role: 'admin'};
@@ -216,11 +250,15 @@ userRouter.post("/admin", async (req, res) => {
         }
 
         const {
+            client_id,
             first_name,
             last_name,
             gender,
             bsn,
             email,
+            adres,
+            nationality,
+            postal_code,
             password,
             birth_date,
             phone_number,
@@ -238,11 +276,15 @@ userRouter.post("/admin", async (req, res) => {
         const passwordHashed = await bcrypt.hash(password, SALT_ROUNDS);
 
         const adminUser = new User({
+            client_id,
             first_name,
             last_name,
             gender,
             bsn,
             email,
+            adres,
+            nationality,
+            postal_code,
             password_hash: passwordHashed,
             birth_date,
             phone_number,
@@ -274,11 +316,15 @@ userRouter.put("/edit/:id", auth, async (req, res) => {
 
         // get the data out of the body
         const {
+            client_id,
             first_name,
             last_name,
             gender,
             bsn,
             email,
+            adres,
+            nationality,
+            postal_code,
             birth_date,
             phone_number,
             personalization_enabled
@@ -303,11 +349,15 @@ userRouter.put("/edit/:id", auth, async (req, res) => {
         const updated = await User.findByIdAndUpdate(
             id,
             {
+                ...(client_id && {client_id}),
                 ...(first_name && {first_name}),
                 ...(last_name && {last_name}),
                 ...(gender && {gender}),
                 ...(bsn && {bsn}),
                 ...(email && {email}),
+                ...(adres && {adres}),
+                ...(nationality && {nationality}),
+                ...(postal_code && {postal_code}),
                 ...(birth_date && {birth_date}),
                 ...(phone_number && {phone_number}),
                 ...(personalization_enabled !== undefined && {personalization_enabled})

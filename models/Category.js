@@ -4,6 +4,9 @@ import "dotenv/config";
 const categorySchema = new mongoose.Schema(
     {
         legacyId: {type: Number, required: false, unique: true, sparse: true},
+
+        client_id: {type: mongoose.Schema.Types.ObjectId, ref: "Client", required: true},
+
         name: {type: String, required: true, unique: true},
     },
     {

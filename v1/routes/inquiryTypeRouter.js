@@ -1,35 +1,26 @@
 import express from "express";
-import InquiryType  from "../models/InquiryType.js";
+import InquiryType from "../../models/InquiryType.js";
 
 const inquiryTypeRouter = express.Router();
 
-//header
-inquiryTypeRouter.use((req, res, next) => {
-    console.log("Check accept header");
-
-    if (req.method === "OPTIONS") {
-        res.header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization");
-        return next();
-    }
-
-    if (!req.headers.accept ||
-        req.headers.accept.includes("application/json") ||
-        req.headers.accept.includes("*/*") ||
-        req.headers.accept.includes("text/html")) {
-        return next();
-    }
-
-    return res.status(406).json({
-        message: "Alleen application/json wordt ondersteund! Ben je de accept header vergeten?",
-    });
-});
-
-//options
+// options for /
 inquiryTypeRouter.options("/", (req, res) => {
-    res.header("Allow", "GET, POST, OPTIONS");
-    res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.status(204).send();
-});
+    res.header("Allow", "POST, GET, OPTIONS")
+
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+    res.setHeader("Access-Control-Allow-Origin", "*")
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept")
+    res.status(204).send()
+})
+// options for /:id
+inquiryTypeRouter.options("/:id", (req, res) => {
+    res.header("Allow", "PUT, GET, OPTIONS, DELETE")
+
+    res.setHeader("Access-Control-Allow-Methods", "GET, PUT, OPTIONS, DELETE")
+    res.setHeader("Access-Control-Allow-Origin", "*")
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept")
+    res.status(204).send()
+})
 
 // get all
 inquiryTypeRouter.get("/", async (req, res) => {
@@ -65,7 +56,7 @@ inquiryTypeRouter.get("/:id", async (req, res) => {
         res.json(inquiryType);
     } catch (e) {
         console.error("Error fetching inquiry type by ID:", e);
-        res.status(500).json({ message: "Server error" });
+        res.status(500).json({message: "Server error"});
     }
 });
 
@@ -77,11 +68,11 @@ inquiryTypeRouter.put("/:id", async (req, res) => {
             name: req.body.name,
             description: req.body.description,
         };
-        const updatedInquiryType = await InquiryType.findByIdAndUpdate(inquiryTypeId, updatedData, { new: true });
+        const updatedInquiryType = await InquiryType.findByIdAndUpdate(inquiryTypeId, updatedData, {new: true});
         res.json(updatedInquiryType);
     } catch (e) {
         console.error("Error updating inquiry type by ID:", e);
-        res.status(500).json({ message: "Server error" });
+        res.status(500).json({message: "Server error"});
     }
 });
 
@@ -90,12 +81,12 @@ inquiryTypeRouter.delete("/:id", async (req, res) => {
     try {
         const deletedInquiryType = await InquiryType.findByIdAndDelete(req.params.id);
         if (!deletedInquiryType) {
-            return res.status(404).json({ message: "Inquiry type not found" });
+            return res.status(404).json({message: "Inquiry type not found"});
         }
-        res.json({ message: "Inquiry type deleted successfully" });
+        res.json({message: "Inquiry type deleted successfully"});
     } catch (e) {
         console.error("Error deleting inquiry type by ID:", e);
-        res.status(500).json({ message: "Server error" });
+        res.status(500).json({message: "Server error"});
     }
 });
 export default inquiryTypeRouter;
