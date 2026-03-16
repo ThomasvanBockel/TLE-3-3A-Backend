@@ -130,7 +130,7 @@ categoryRouter.get("/:id", publicApiKey, async (req, res) => {
 // CREATE - alleen admin, binnen eigen client
 categoryRouter.post("/", publicApiKey, auth, adminOnly, async (req, res) => {
     try {
-        const {name, legacyId} = req.body;
+        const {name} = req.body;
 
         if (!name) {
             return res.status(400).json({message: "name is required"});
@@ -147,7 +147,6 @@ categoryRouter.post("/", publicApiKey, auth, adminOnly, async (req, res) => {
 
         const category = new Category({
             name,
-            legacyId,
             client_id: req.clientId
         });
 

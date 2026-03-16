@@ -1,4 +1,5 @@
 import express from "express";
+import mongoose from "mongoose";
 import {publicApiKey} from "../middlewares/publicApi.js";
 import {auth} from "../middlewares/auth.js";
 import {adminOnly} from "../middlewares/adminOnly.js";
@@ -120,7 +121,6 @@ contentItemRouter.post("/", publicApiKey, auth, adminOnly, async (req, res) => {
 
         const contentItem = new ContentItem({
             client_id: req.clientId,
-            legacyId: req.body.legacyId,
             title: req.body.title,
             body: req.body.body,
             category_ids: resolvedCategoryId,
