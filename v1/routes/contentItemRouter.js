@@ -19,13 +19,13 @@ async function resolveCategoryObjectId(rawCategoryId) {
 
     const numericLegacyId = Number(asString);
     if (!Number.isNaN(numericLegacyId)) {
-        const category = await Category.findOne({ legacyId: numericLegacyId }).select("_id").lean();
+        const category = await Category.findOne({legacyId: numericLegacyId}).select("_id").lean();
         if (category?._id) {
             return String(category._id);
         }
     }
 
-    const byName = await Category.findOne({ name: asString }).select("_id").lean();
+    const byName = await Category.findOne({name: asString}).select("_id").lean();
     if (byName?._id) {
         return String(byName._id);
     }

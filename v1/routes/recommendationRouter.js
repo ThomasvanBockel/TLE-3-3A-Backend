@@ -1,6 +1,6 @@
 import express from "express";
 import mongoose from "mongoose";
-import { generateRecommendations } from "../services/recommendationService.js";
+import {generateRecommendations} from "../services/recommendationService.js";
 import ContentItem from "../models/ContentItem.js";
 
 const recommendationRouter = express.Router();
@@ -42,8 +42,8 @@ recommendationRouter.get("/guest", async (req, res) => {
         const safeLimit = Math.max(1, Math.min(limit, 20));
 
         const randomItems = await ContentItem.aggregate([
-            { $match: { status: { $ne: "ARCHIVED" } } },
-            { $sample: { size: safeLimit } }
+            {$match: {status: {$ne: "ARCHIVED"}}},
+            {$sample: {size: safeLimit}}
         ]);
 
         return res.status(200).json({
@@ -54,19 +54,19 @@ recommendationRouter.get("/guest", async (req, res) => {
         });
     } catch (error) {
         console.log(error);
-        return res.status(500).json({ message: "Server error while getting guest recommendations" });
+        return res.status(500).json({message: "Server error while getting guest recommendations"});
     }
 });
 
 //get route to show the 4 most recommended content items
 recommendationRouter.get("/user/:userId", async (req, res) => {
     try {
-        const { userId } = req.params;
+        const {userId} = req.params;
 
 
         //checks for user login
         if (!mongoose.Types.ObjectId.isValid(userId)) {
-            return res.status(400).json({ message: "Invalid user id" });
+            return res.status(400).json({message: "Invalid user id"});
         }
 
         //amount of content items shared
@@ -79,12 +79,12 @@ recommendationRouter.get("/user/:userId", async (req, res) => {
         const debug = req.query.debug === "true";
 
         //decide the 4 most recommended content items
-        const result = await generateRecommendations({ userId, limit, persist, debug });
+        const result = await generateRecommendations({userId, limit, persist, debug});
         return res.status(result.status).json(result.payload);
         //server error
     } catch (error) {
         console.log(error);
-        return res.status(500).json({ message: "Server error while generating recommendations" });
+        return res.status(500).json({message: "Server error while generating recommendations"});
     }
 });
 

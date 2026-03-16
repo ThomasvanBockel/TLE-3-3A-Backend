@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { pipeline } from "@huggingface/transformers";
+import {pipeline} from "@huggingface/transformers";
 import User from "../models/User.js";
 import Category from "../models/Category.js";
 import ContentItem from "../models/ContentItem.js";
@@ -97,11 +97,11 @@ function weightedAverage(vectors, weights) {
 
 // Build a single profile vector from weighted user interests.
 async function buildUserProfileVector(userId) {
-    const userInterestRows = await UserInterest.find({ user_id: userId }).lean();
+    const userInterestRows = await UserInterest.find({user_id: userId}).lean();
     if (!userInterestRows.length) return [];
 
     const interestCategoryIds = userInterestRows.map((interest) => interest.category_id);
-    const categories = await Category.find({ _id: { $in: interestCategoryIds } }).select("name").lean();
+    const categories = await Category.find({_id: {$in: interestCategoryIds}}).select("name").lean();
     const categoryNameById = new Map(categories.map((category) => [String(category._id), category.name]));
 
     const interestVectors = [];
@@ -159,18 +159,18 @@ function toRecommendationReason(similarity, ruleBoost, preferredCategories = [])
 }
 
 // Score and rank content for a user using semantic similarity + rule boosts.
-export async function generateRecommendations({ userId, limit = 10, persist = true, debug = false }) {
+export async function generateRecommendations({userId, limit = 10, persist = true, debug = false}) {
     const safeLimit = Math.max(1, Math.min(Number(limit) || 10, 50));
 
     const userRecord = await User.findById(userId).lean();
 
     // User must exist before recommendations can be generated.
     if (!userRecord) {
-        return { status: 404, payload: { message: "User not found" } };
+        return {status: 404, payload: {message: "User not found"}};
     }
 
     const totalContentCount = await ContentItem.countDocuments({});
-    const eligibleContentItems = await ContentItem.find({ status: { $ne: "ARCHIVED" } })
+    const eligibleContentItems = await ContentItem.find({status: {$ne: "ARCHIVED"}})
         .select("title body content_type is_urgent is_mandatory created_at starts_at ends_at status")
         .lean();
 
@@ -188,17 +188,17 @@ export async function generateRecommendations({ userId, limit = 10, persist = tr
             payload.debug = {
                 total_content_count: totalContentCount,
                 eligible_content_count: 0,
-                filter: { status_not_equal: "ARCHIVED" }
+                filter: {status_not_equal: "ARCHIVED"}
             };
         }
 
-        return { status: 200, payload };
+        return {status: 200, payload};
     }
 
     const eligibleContentIds = eligibleContentItems.map((item) => item._id);
-    const contentCategoryRelations = await ContentCategory.find({ content_id: { $in: eligibleContentIds } }).lean();
+    const contentCategoryRelations = await ContentCategory.find({content_id: {$in: eligibleContentIds}}).lean();
     const distinctCategoryIds = [...new Set(contentCategoryRelations.map((relation) => String(relation.category_id)))];
-    const categories = await Category.find({ _id: { $in: distinctCategoryIds } }).select("name").lean();
+    const categories = await Category.find({_id: {$in: distinctCategoryIds}}).select("name").lean();
 
     const categoryNameById = new Map(categories.map((category) => [String(category._id), category.name]));
     const categoryIdsByContentId = new Map();
@@ -211,7 +211,7 @@ export async function generateRecommendations({ userId, limit = 10, persist = tr
     }
 
     // Determine which categories this user explicitly prefers.
-    const userInterestRows = await UserInterest.find({ user_id: userId }).lean();
+    const userInterestRows = await UserInterest.find({user_id: userId}).lean();
     const preferredCategoryIdSet = new Set(userInterestRows.map((interest) => String(interest.category_id)));
 
     // Personalization opt-out: return newest eligible content.
@@ -223,7 +223,7 @@ export async function generateRecommendations({ userId, limit = 10, persist = tr
                 rank_position: index + 1,
                 score: 0,
                 content: item,
-                reason: { mode: "personalization_disabled" }
+                reason: {mode: "personalization_disabled"}
             }));
 
         const payload = {
@@ -285,7 +285,7 @@ export async function generateRecommendations({ userId, limit = 10, persist = tr
 
     let recommendationRun = null;
     if (persist) {
-        recommendationRun = await RecommendationRun.create({ user_id: userId });
+        recommendationRun = await RecommendationRun.create({user_id: userId});
 
         if (topRankedItems.length) {
             await RecommendationItem.insertMany(
