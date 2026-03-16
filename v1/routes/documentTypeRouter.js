@@ -1,6 +1,6 @@
 import express from "express";
-import DocumentType from "../models/DocumentType.js";
-import documentType from "../models/DocumentType.js";
+import DocumentType from "../../models/DocumentType.js";
+import documentType from "../../models/DocumentType.js";
 import inquiryTypeRouter from "./inquiryTypeRouter.js";
 
 const documentTypeRouter = express.Router();

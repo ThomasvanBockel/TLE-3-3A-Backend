@@ -1,7 +1,7 @@
 import express from "express";
 import mongoose from "mongoose";
 import {generateRecommendations} from "../services/recommendationService.js";
-import ContentItem from "../models/ContentItem.js";
+import ContentItem from "../../models/ContentItem.js";
 
 const recommendationRouter = express.Router();
 

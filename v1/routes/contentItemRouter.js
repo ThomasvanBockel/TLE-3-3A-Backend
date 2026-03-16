@@ -1,8 +1,8 @@
 import express from 'express';
 import mongoose from 'mongoose';
-import ContentItem from '../models/ContentItem.js';
-import ContentCategory from '../models/ContentCategory.js';
-import Category from '../models/Category.js';
+import ContentItem from '../../models/ContentItem.js';
+import ContentCategory from '../../models/ContentCategory.js';
+import Category from '../../models/Category.js';
 import syncContentCategories from '../async/ContentCategoryAsync.js';
 
 const contentItemRouter = express.Router();

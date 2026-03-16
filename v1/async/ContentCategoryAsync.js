@@ -1,4 +1,4 @@
-import ContentCategory from "../models/ContentCategory.js";
+import ContentCategory from "../../models/ContentCategory.js";
 
 async function syncContentCategories(contentId, categoryIds = []) {
     const cleanIds = (categoryIds || []).filter(Boolean);

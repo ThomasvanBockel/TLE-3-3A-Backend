@@ -1,5 +1,5 @@
 import express from "express";
-import Document from "../models/Document.js";
+import Document from "../../models/Document.js";
 import inquiryTypeRouter from "./inquiryTypeRouter.js";
 
 

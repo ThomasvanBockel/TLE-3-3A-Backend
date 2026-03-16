@@ -1,5 +1,5 @@
 import express from "express";
-import Inquiry from "../models/Inquiry.js";
+import Inquiry from "../../models/Inquiry.js";
 import crypto from "crypto";
 import inquiryTypeRouter from "./inquiryTypeRouter.js";
 

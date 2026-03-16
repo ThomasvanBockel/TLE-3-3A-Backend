@@ -1,5 +1,5 @@
 import express from "express";
-import User from "../models/User.js";
+import User from "../../models/User.js";
 import bcrypt from "bcrypt"
 import mongoose from "mongoose";
 import jwt from 'jsonwebtoken';
@@ -299,8 +299,6 @@ userRouter.post("/admin", async (req, res) => {
         return res.status(500).json({message: "Server error"});
     }
 });
-
-
 
 
 // edit for the user

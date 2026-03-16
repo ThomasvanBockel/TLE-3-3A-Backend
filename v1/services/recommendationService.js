@@ -1,12 +1,12 @@
 import mongoose from "mongoose";
 import {pipeline} from "@huggingface/transformers";
-import User from "../models/User.js";
-import Category from "../models/Category.js";
-import ContentItem from "../models/ContentItem.js";
-import ContentCategory from "../models/ContentCategory.js";
-import UserInterest from "../models/UserInterest.js";
-import RecommendationRun from "../models/RecommendationRun.js";
-import RecommendationItem from "../models/RecommendationItem.js";
+import User from "../../models/User.js";
+import Category from "../../models/Category.js";
+import ContentItem from "../../models/ContentItem.js";
+import ContentCategory from "../../models/ContentCategory.js";
+import UserInterest from "../../models/UserInterest.js";
+import RecommendationRun from "../../models/RecommendationRun.js";
+import RecommendationItem from "../../models/RecommendationItem.js";
 
 let extractorPromise = null;
 const embeddingCache = new Map();
