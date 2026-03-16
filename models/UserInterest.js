@@ -5,7 +5,7 @@ const userInterestSchema = new mongoose.Schema(
     {
         user_id: {type: mongoose.Schema.Types.ObjectId, ref: "User", required: true},
         category_id: {type: mongoose.Schema.Types.ObjectId, ref: "Category", required: true},
-        weight: {type: Number, required: false, default: 1},
+        weight: {type: Boolean, required: false, default: true},
     },
     {
         timestamps: true,
