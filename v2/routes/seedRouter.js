@@ -12,6 +12,7 @@ const seedRouter = express.Router();
 
 seedRouter.post("/", async (req, res) => {
     try {
+        /*
         await Client.deleteMany({});
         await User.deleteMany({});
         await Category.deleteMany({});
@@ -19,6 +20,7 @@ seedRouter.post("/", async (req, res) => {
         await DocumentType.deleteMany({});
         await InquiryType.deleteMany({});
         await Inquiry.deleteMany({});
+         */
         const randomDate = (start, end) => new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
 
         // de clients
@@ -29,7 +31,7 @@ seedRouter.post("/", async (req, res) => {
 
         const password_3A = await bcrypt.hash("wachtwoord3A", 10);
         const user_3A = new User({
-            client_id: client_3A._id,
+            client_id: "69b7fed3361696685a5eb20f",
             first_name: "Anna",
             last_name: "Jansen",
             gender: "Vrouw",
@@ -48,7 +50,7 @@ seedRouter.post("/", async (req, res) => {
 
         const admin_3A = await bcrypt.hash("adminwachtwoord3A", 10);
         const adminUser_3A = new User({
-            client_id: client_3A._id,
+            client_id: "69b7fed3361696685a5eb20f",
             first_name: "Admin",
             last_name: "3A",
             gender: "Man",
@@ -93,7 +95,7 @@ seedRouter.post("/", async (req, res) => {
 
         const password_3B = await bcrypt.hash("wachtwoord3B", 10);
         const user_3B = new User({
-            client_id: client_3B._id,
+            client_id: "69b7fed3361696685a5eb20f",
             first_name: "Bas",
             last_name: "de Vries",
             gender: "Man",
@@ -112,7 +114,7 @@ seedRouter.post("/", async (req, res) => {
 
         const admin_3B = await bcrypt.hash("adminwachtwoord3B", 10);
         const adminUser_3B = new User({
-            client_id: client_3B._id,
+            client_id: "69b7fed3361696685a5eb20f",
             first_name: "Admin",
             last_name: "3B",
             gender: "Man",

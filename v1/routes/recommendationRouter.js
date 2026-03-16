@@ -1,5 +1,7 @@
 import express from "express";
 import mongoose from "mongoose";
+import {auth} from "../middlewares/auth.js";
+import {publicApiKey} from "../middlewares/publicApi.js";
 import {generateRecommendations} from "../services/recommendationService.js";
 import ContentItem from "../../models/ContentItem.js";
 
@@ -59,13 +61,11 @@ recommendationRouter.get("/guest", async (req, res) => {
 });
 
 //get route to show the 4 most recommended content items
-recommendationRouter.get("/user/:userId", async (req, res) => {
+recommendationRouter.get("/user/:userId", auth, publicApiKey, async (req, res) => {
     try {
-        const {userId} = req.params;
-
-
         //checks for user login
-        if (!mongoose.Types.ObjectId.isValid(userId)) {
+        if (!mongoose.Types.ObjectId.isValid(req.user_id)) {
+            console.log(req.user_id)
             return res.status(400).json({message: "Invalid user id"});
         }
 

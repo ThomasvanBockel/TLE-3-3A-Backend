@@ -169,6 +169,12 @@ export async function generateRecommendations({userId, limit = 10, persist = tru
         return {status: 404, payload: {message: "User not found"}};
     }
 
+    const clientId = userRecord.client_id;
+
+    if (persist && !clientId) {
+        return {status: 422, payload: {message: "User has no client_id"}};
+    }
+
     const totalContentCount = await ContentItem.countDocuments({});
     const eligibleContentItems = await ContentItem.find({status: {$ne: "ARCHIVED"}})
         .select("title body content_type is_urgent is_mandatory created_at starts_at ends_at status")
@@ -285,11 +291,12 @@ export async function generateRecommendations({userId, limit = 10, persist = tru
 
     let recommendationRun = null;
     if (persist) {
-        recommendationRun = await RecommendationRun.create({user_id: userId});
+        recommendationRun = await RecommendationRun.create({client_id: clientId, user_id: userId});
 
         if (topRankedItems.length) {
             await RecommendationItem.insertMany(
                 topRankedItems.map((entry, index) => ({
+                    client_id: clientId,
                     run_id: recommendationRun._id,
                     content_id: entry.content._id,
                     rank_position: index + 1,

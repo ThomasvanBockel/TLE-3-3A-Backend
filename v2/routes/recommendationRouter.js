@@ -1,6 +1,8 @@
 import express from "express";
 import mongoose from "mongoose";
 import {generateRecommendations} from "../services/recommendationService.js";
+import {publicApiKey} from "../middlewares/publicApi.js";
+import {auth} from "../middlewares/auth.js";
 import ContentItem from "../../models/ContentItem.js";
 
 const recommendationRouter = express.Router();
@@ -59,14 +61,23 @@ recommendationRouter.get("/guest", async (req, res) => {
 });
 
 //get route to show the 4 most recommended content items
-recommendationRouter.get("/user/:userId", async (req, res) => {
+recommendationRouter.get("/user/:userId",auth, publicApiKey, async (req, res) => {
     try {
-        const {userId} = req.params;
-
+        const userId = req.userId;
+        const clientId = req.clientId;
+        const authClientId = req.user?.client_id;
 
         //checks for user login
         if (!mongoose.Types.ObjectId.isValid(userId)) {
             return res.status(400).json({message: "Invalid user id"});
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(clientId)) {
+            return res.status(400).json({message: "Invalid client id"});
+        }
+
+        if (!authClientId || String(authClientId) !== String(clientId)) {
+            return res.status(403).json({message: "API key client does not match authenticated user's client"});
         }
 
         //amount of content items shared
@@ -79,7 +90,7 @@ recommendationRouter.get("/user/:userId", async (req, res) => {
         const debug = req.query.debug === "true";
 
         //decide the 4 most recommended content items
-        const result = await generateRecommendations({userId, limit, persist, debug});
+        const result = await generateRecommendations({clientId, userId, limit, persist, debug});
         return res.status(result.status).json(result.payload);
         //server error
     } catch (error) {

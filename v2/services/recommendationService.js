@@ -159,18 +159,22 @@ function toRecommendationReason(similarity, ruleBoost, preferredCategories = [])
 }
 
 // Score and rank content for a user using semantic similarity + rule boosts.
-export async function generateRecommendations({userId, limit = 10, persist = true, debug = false}) {
+export async function generateRecommendations({clientId, userId, limit = 10, persist = true, debug = false}) {
     const safeLimit = Math.max(1, Math.min(Number(limit) || 10, 50));
 
-    const userRecord = await User.findById(userId).lean();
+    if (!clientId) {
+        return {status: 400, payload: {message: "Client id is required"}};
+    }
+
+    const userRecord = await User.findOne({_id: userId, client_id: clientId}).lean();
 
     // User must exist before recommendations can be generated.
     if (!userRecord) {
-        return {status: 404, payload: {message: "User not found"}};
+        return {status: 404, payload: {message: "User not found for this client"}};
     }
 
-    const totalContentCount = await ContentItem.countDocuments({});
-    const eligibleContentItems = await ContentItem.find({status: {$ne: "ARCHIVED"}})
+    const totalContentCount = await ContentItem.countDocuments({client_id: clientId});
+    const eligibleContentItems = await ContentItem.find({client_id: clientId, status: {$ne: "ARCHIVED"}})
         .select("title body content_type is_urgent is_mandatory created_at starts_at ends_at status")
         .lean();
 
@@ -188,7 +192,7 @@ export async function generateRecommendations({userId, limit = 10, persist = tru
             payload.debug = {
                 total_content_count: totalContentCount,
                 eligible_content_count: 0,
-                filter: {status_not_equal: "ARCHIVED"}
+                filter: {client_id: String(clientId), status_not_equal: "ARCHIVED"}
             };
         }
 
@@ -198,7 +202,7 @@ export async function generateRecommendations({userId, limit = 10, persist = tru
     const eligibleContentIds = eligibleContentItems.map((item) => item._id);
     const contentCategoryRelations = await ContentCategory.find({content_id: {$in: eligibleContentIds}}).lean();
     const distinctCategoryIds = [...new Set(contentCategoryRelations.map((relation) => String(relation.category_id)))];
-    const categories = await Category.find({_id: {$in: distinctCategoryIds}}).select("name").lean();
+    const categories = await Category.find({_id: {$in: distinctCategoryIds}, client_id: clientId}).select("name").lean();
 
     const categoryNameById = new Map(categories.map((category) => [String(category._id), category.name]));
     const categoryIdsByContentId = new Map();
@@ -285,11 +289,12 @@ export async function generateRecommendations({userId, limit = 10, persist = tru
 
     let recommendationRun = null;
     if (persist) {
-        recommendationRun = await RecommendationRun.create({user_id: userId});
+        recommendationRun = await RecommendationRun.create({client_id: clientId, user_id: userId});
 
         if (topRankedItems.length) {
             await RecommendationItem.insertMany(
                 topRankedItems.map((entry, index) => ({
+                    client_id: clientId,
                     run_id: recommendationRun._id,
                     content_id: entry.content._id,
                     rank_position: index + 1,
