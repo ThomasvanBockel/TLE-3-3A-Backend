@@ -50,7 +50,7 @@ recommendationRouter.get("/guest", async (req, res) => {
 
         return res.status(200).json({
             personalization_enabled: false,
-            mode: "guest_recent",
+            mode: "guest",
             total: recentItems.length,
             items: recentItems
         });
