@@ -2,7 +2,7 @@ import cors from "cors";
 
 const allowedOrigins = [
     "http://localhost:5173",
-    "https://team-a.nl",
+    "http://145.24.237.124/",
     "https://team-b.nl"
 ];
 
