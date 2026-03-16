@@ -1,8 +1,8 @@
 import express from "express";
 import DocumentType from "../../models/DocumentType.js";
 import {publicApiKey} from "../middlewares/publicApi.js";
-import {auth} from "../middleware/auth.js";
-import {adminOnly} from "../middleware/adminOnly.js";
+import {auth} from "../middlewares/auth.js";
+import {adminOnly} from "../middlewares/adminOnly.js";
 import {publicLimiter} from "../middlewares/rateLimit.js";
 
 const documentTypeRouter = express.Router();

@@ -1,46 +1,31 @@
 import express from "express";
 import InquiryType from "../../models/InquiryType.js";
-import {publicApiKey} from "../middlewares/publicApi.js";
-import {auth} from "../middleware/auth.js";
-import {adminOnly} from "../middleware/adminOnly.js";
-import {publicLimiter} from "../middlewares/rateLimit.js";
 
 const inquiryTypeRouter = express.Router();
 
-//header
-inquiryTypeRouter.use((req, res, next) => {
-    console.log("Check accept header");
-
-    if (req.method === "OPTIONS") {
-        res.header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization");
-        return next();
-    }
-
-    if (!req.headers.accept ||
-        req.headers.accept.includes("application/json") ||
-        req.headers.accept.includes("*/*") ||
-        req.headers.accept.includes("text/html")) {
-        return next();
-    }
-
-    return res.status(406).json({
-        message: "Alleen application/json wordt ondersteund! Ben je de accept header vergeten?",
-    });
-});
-
-//options
+// options for /
 inquiryTypeRouter.options("/", (req, res) => {
-    res.header("Allow", "GET, POST, OPTIONS");
-    res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.status(204).send();
-});
-// GET ALL - publiek per client
-inquiryTypeRouter.get("/", publicLimiter, publicApiKey, async (req, res) => {
-    try {
-        const inquiryTypes = await InquiryType.find({
-            client_id: req.clientId
-        }).sort({name: 1});
+    res.header("Allow", "POST, GET, OPTIONS")
 
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+    res.setHeader("Access-Control-Allow-Origin", "*")
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept")
+    res.status(204).send()
+})
+// options for /:id
+inquiryTypeRouter.options("/:id", (req, res) => {
+    res.header("Allow", "PUT, GET, OPTIONS, DELETE")
+
+    res.setHeader("Access-Control-Allow-Methods", "GET, PUT, OPTIONS, DELETE")
+    res.setHeader("Access-Control-Allow-Origin", "*")
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept")
+    res.status(204).send()
+})
+
+// get all
+inquiryTypeRouter.get("/", async (req, res) => {
+    try {
+        const inquiryTypes = await InquiryType.find({});
         return res.status(200).json(inquiryTypes);
     } catch (e) {
         console.log(e);
@@ -48,28 +33,12 @@ inquiryTypeRouter.get("/", publicLimiter, publicApiKey, async (req, res) => {
     }
 });
 
-// CREATE - alleen admin
-inquiryTypeRouter.post("/", publicApiKey, auth, adminOnly, async (req, res) => {
+// post
+inquiryTypeRouter.post("/", async (req, res) => {
     try {
-        const {name, description} = req.body;
-
-        if (!name) {
-            return res.status(400).json({message: "name is required"});
-        }
-
-        const exists = await InquiryType.findOne({
-            name,
-            client_id: req.clientId
-        });
-
-        if (exists) {
-            return res.status(400).json({message: "Inquiry type already exists"});
-        }
-
         const inquiryType = new InquiryType({
-            client_id: req.clientId,
-            name,
-            description
+            name: req.body.name,
+            description: req.body.description,
         });
         await inquiryType.save();
         return res.status(201).json(inquiryType);
@@ -79,86 +48,45 @@ inquiryTypeRouter.post("/", publicApiKey, auth, adminOnly, async (req, res) => {
     }
 });
 
-// GET ONE - publiek per client
-inquiryTypeRouter.get("/:id", publicApiKey, async (req, res) => {
+// get met id
+inquiryTypeRouter.get("/:id", async (req, res) => {
     try {
-        const inquiryType = await InquiryType.findOne({
-            _id: req.params.id,
-            client_id: req.clientId
-        });
-
-        if (!inquiryType) {
-            return res.status(404).json({message: "Inquiry type not found"});
-        }
-
-        return res.status(200).json(inquiryType);
+        const inquiryTypeId = req.params.id;
+        const inquiryType = await InquiryType.findById(inquiryTypeId);
+        res.json(inquiryType);
     } catch (e) {
         console.error("Error fetching inquiry type by ID:", e);
-        return res.status(400).json({message: "Invalid id"});
+        res.status(500).json({message: "Server error"});
     }
 });
 
-// UPDATE - alleen admin
-inquiryTypeRouter.put("/:id", publicApiKey, auth, adminOnly, async (req, res) => {
+// put met id
+inquiryTypeRouter.put("/:id", async (req, res) => {
     try {
-        const {name, description} = req.body;
-        const updatedData = {};
-
-        if (name !== undefined) updatedData.name = name;
-        if (description !== undefined) updatedData.description = description;
-
-        if (Object.keys(updatedData).length === 0) {
-            return res.status(400).json({message: "No valid fields to update"});
-        }
-
-        if (updatedData.name) {
-            const exists = await InquiryType.findOne({
-                name: updatedData.name,
-                client_id: req.clientId,
-                _id: {$ne: req.params.id}
-            });
-
-            if (exists) {
-                return res.status(400).json({message: "Inquiry type already exists"});
-            }
-        }
-
-        const updatedInquiryType = await InquiryType.findOneAndUpdate(
-            {
-                _id: req.params.id,
-                client_id: req.clientId
-            },
-            updatedData,
-            {new: true, runValidators: true}
-        );
-
-        if (!updatedInquiryType) {
-            return res.status(404).json({message: "Inquiry type not found"});
-        }
-
-        return res.status(200).json(updatedInquiryType);
+        const inquiryTypeId = req.params.id;
+        const updatedData = {
+            name: req.body.name,
+            description: req.body.description,
+        };
+        const updatedInquiryType = await InquiryType.findByIdAndUpdate(inquiryTypeId, updatedData, {new: true});
+        res.json(updatedInquiryType);
     } catch (e) {
         console.error("Error updating inquiry type by ID:", e);
-        return res.status(400).json({message: "Invalid id"});
+        res.status(500).json({message: "Server error"});
     }
 });
 
-// DELETE - alleen admin
-inquiryTypeRouter.delete("/:id", publicApiKey, auth, adminOnly, async (req, res) => {
+// delete met id
+inquiryTypeRouter.delete("/:id", async (req, res) => {
     try {
-        const deletedInquiryType = await InquiryType.findOneAndDelete({
-            _id: req.params.id,
-            client_id: req.clientId
-        });
-
+        const deletedInquiryType = await InquiryType.findByIdAndDelete(req.params.id);
         if (!deletedInquiryType) {
             return res.status(404).json({message: "Inquiry type not found"});
         }
-
-        return res.status(200).json({message: "Inquiry type deleted successfully"});
+        res.json({message: "Inquiry type deleted successfully"});
     } catch (e) {
         console.error("Error deleting inquiry type by ID:", e);
-        return res.status(400).json({message: "Invalid id"});
+        res.status(500).json({message: "Server error"});
     }
 });
 export default inquiryTypeRouter;

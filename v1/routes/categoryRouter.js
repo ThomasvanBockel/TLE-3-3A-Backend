@@ -1,33 +1,16 @@
 import express from "express";
 import Category from "../../models/Category.js";
-import Category from "../models/Category.js";
-import {adminOnly} from "../middleware/adminOnly.js";
-import {auth} from "../middleware/auth.js";
-import {publicApiKey} from "../middlewares/publicApi.js";
-import {publicLimiter} from "../middlewares/rateLimit.js";
+import clientRouter from "./clientRouter.js";
 
 const categoryRouter = express.Router();
 categoryRouter.options("/", (req, res) => {
     res.header("Allow", "POST, GET, OPTIONS")
-    res.setHeader("Access-Control-Allow-Methods", "GET, PUT, OPTIONS, DELETE")
+
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
     res.setHeader("Access-Control-Allow-Origin", "*")
     res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept")
     res.status(204).send()
 })
-
-// GET ALL - teamgebonden publiek
-    categoryRouter.get("/", publicLimiter, publicApiKey, async (req, res) => {
-        try {
-            const categories = await Category.find({
-                client_id: req.clientId
-            }).sort({name: 1});
-
-            return res.status(200).json(categories);
-        } catch (e) {
-            console.log(e);
-            return res.status(500).json({message: "Server error"});
-        }
-    });
 // options for /:id
 categoryRouter.options("/:id", (req, res) => {
     res.header("Allow", "PUT, GET, OPTIONS, DELETE")
@@ -50,10 +33,7 @@ const requireAdmin = (req, res) => {
 // GET ALL - iedereen
 categoryRouter.get("/", async (req, res) => {
     try {
-        const categories = await Category.find({
-            client_id: req.clientId
-        }).sort({name: 1});
-
+        const categories = await Category.find().sort({name: 1});
         return res.status(200).json(categories);
     } catch (e) {
         console.log(e);
@@ -61,20 +41,22 @@ categoryRouter.get("/", async (req, res) => {
     }
 });
 
-// SEED - alleen admin, binnen eigen client
-categoryRouter.post("/seed", publicApiKey, auth, adminOnly, async (req, res) => {
+// SEED - alleen admin (zet deze boven /:id !)
+categoryRouter.post("/seed", async (req, res) => {
     try {
+        if (!requireAdmin(req, res)) return;
+
         const seedCategories = [
-            {name: "Afval & Recycling", client_id: req.clientId},
-            {name: "Vergunningen", client_id: req.clientId},
-            {name: "Zorg & Ondersteuning", client_id: req.clientId},
-            {name: "Belastingen", client_id: req.clientId},
-            {name: "Paspoort & ID", client_id: req.clientId},
-            {name: "Verhuizen", client_id: req.clientId},
-            {name: "Melding openbare ruimte", client_id: req.clientId},
-            {name: "Parkeren", client_id: req.clientId},
-            {name: "Bouwen & Wonen", client_id: req.clientId},
-            {name: "Werk & Inkomen", client_id: req.clientId}
+            {name: "Afval & Recycling"},
+            {name: "Vergunningen"},
+            {name: "Zorg & Ondersteuning"},
+            {name: "Belastingen"},
+            {name: "Paspoort & ID"},
+            {name: "Verhuizen"},
+            {name: "Melding openbare ruimte"},
+            {name: "Parkeren"},
+            {name: "Bouwen & Wonen"},
+            {name: "Werk & Inkomen"}
         ];
 
         const existing = await Category.find({
@@ -85,42 +67,25 @@ categoryRouter.post("/seed", publicApiKey, auth, adminOnly, async (req, res) => 
         const toInsert = seedCategories.filter((c) => !existingNames.has(c.name));
 
         if (toInsert.length === 0) {
-            return res.status(200).json({
-                message: "No categories to seed",
-                inserted: 0
-            });
+            return res.status(200).json({message: "No categories to seed", inserted: 0});
         }
 
         const inserted = await Category.insertMany(toInsert, {ordered: false});
-
-        return res.status(201).json({
-            message: "Seeded categories",
-            inserted: inserted.length,
-            data: inserted
-        });
+        return res.status(201).json({message: "Seeded categories", inserted: inserted.length, data: inserted});
     } catch (e) {
         console.log(e);
         if (e?.code === 11000) {
-            return res.status(201).json({
-                message: "Seeded categories (some already existed)"
-            });
+            return res.status(201).json({message: "Seeded categories (some already existed)"});
         }
         return res.status(500).json({message: "Server error"});
     }
 });
 
-// GET ONE - teamgebonden publiek
-categoryRouter.get("/:id", publicApiKey, async (req, res) => {
+// GET ONE - iedereen
+categoryRouter.get("/:id", async (req, res) => {
     try {
-        const category = await Category.findOne({
-            _id: req.params.id,
-            client_id: req.clientId
-        });
-
-        if (!category) {
-            return res.status(404).json({message: "Category not found"});
-        }
-
+        const category = await Category.findById(req.params.id);
+        if (!category) return res.status(404).json({message: "Category not found"});
         return res.status(200).json(category);
     } catch (e) {
         console.log(e);
@@ -128,30 +93,19 @@ categoryRouter.get("/:id", publicApiKey, async (req, res) => {
     }
 });
 
-// CREATE - alleen admin, binnen eigen client
-categoryRouter.post("/", publicApiKey, auth, adminOnly, async (req, res) => {
+// CREATE - alleen admin
+categoryRouter.post("/", async (req, res) => {
     try {
-        const {name, legacyId} = req.body;
+        if (!requireAdmin(req, res)) return;
 
-        if (!name) {
-            return res.status(400).json({message: "name is required"});
-        }
+        const {name, legacyId, client_id} = req.body;
+        if (!name) return res.status(400).json({message: "name is required"});
+        if (!client_id) return res.status(400).json({message: "client_id is required"});
 
-        const exists = await Category.findOne({
-            name,
-            client_id: req.clientId
-        });
+        const exists = await Category.findOne({name});
+        if (exists) return res.status(400).json({message: "Category already exists"});
 
-        if (exists) {
-            return res.status(400).json({message: "Category already exists"});
-        }
-
-        const category = new Category({
-            name,
-            legacyId,
-            client_id: req.clientId
-        });
-
+        const category = new Category({name, legacyId, client_id});
         await category.save();
 
         return res.status(201).json(category);
@@ -161,46 +115,33 @@ categoryRouter.post("/", publicApiKey, auth, adminOnly, async (req, res) => {
     }
 });
 
-// UPDATE - alleen admin, binnen eigen client
-categoryRouter.put("/:id", publicApiKey, auth, adminOnly, async (req, res) => {
+// UPDATE - alleen admin
+categoryRouter.put("/:id", async (req, res) => {
     try {
-        const {name, legacyId} = req.body;
+        if (!requireAdmin(req, res)) return;
+
+        const {name, legacyId, client_id} = req.body;
         const update = {};
 
         if (name !== undefined) update.name = name;
         if (legacyId !== undefined) update.legacyId = legacyId;
+        if (client_id !== undefined) update.client_id = client_id;
 
         if (Object.keys(update).length === 0) {
             return res.status(400).json({message: "No valid fields to update"});
         }
 
         if (update.name) {
-            const exists = await Category.findOne({
-                name: update.name,
-                client_id: req.clientId,
-                _id: {$ne: req.params.id}
-            });
-
-            if (exists) {
-                return res.status(400).json({message: "Category name already exists"});
-            }
+            const exists = await Category.findOne({name: update.name, _id: {$ne: req.params.id}});
+            if (exists) return res.status(400).json({message: "Category name already exists"});
         }
 
-        const category = await Category.findOneAndUpdate(
-            {
-                _id: req.params.id,
-                client_id: req.clientId
-            },
-            update,
-            {
-                new: true,
-                runValidators: true
-            }
-        );
+        const category = await Category.findByIdAndUpdate(req.params.id, update, {
+            new: true,
+            runValidators: true
+        });
 
-        if (!category) {
-            return res.status(404).json({message: "Category not found"});
-        }
+        if (!category) return res.status(404).json({message: "Category not found"});
 
         return res.status(200).json(category);
     } catch (e) {
@@ -209,17 +150,13 @@ categoryRouter.put("/:id", publicApiKey, auth, adminOnly, async (req, res) => {
     }
 });
 
-// DELETE - alleen admin, binnen eigen client
-categoryRouter.delete("/:id", publicApiKey, auth, adminOnly, async (req, res) => {
+// DELETE - alleen admin
+categoryRouter.delete("/:id", async (req, res) => {
     try {
-        const deleted = await Category.findOneAndDelete({
-            _id: req.params.id,
-            client_id: req.clientId
-        });
+        if (!requireAdmin(req, res)) return;
 
-        if (!deleted) {
-            return res.status(404).json({message: "Category not found"});
-        }
+        const deleted = await Category.findByIdAndDelete(req.params.id);
+        if (!deleted) return res.status(404).json({message: "Category not found"});
 
         return res.status(204).send();
     } catch (e) {

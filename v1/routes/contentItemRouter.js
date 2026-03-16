@@ -1,9 +1,5 @@
-import express from "express";
-import ContentItem from "../models/ContentItem.js";
-import {publicApiKey} from "../middlewares/publicApi.js";
-import {auth} from "../middleware/auth.js";
-import {adminOnly} from "../middleware/adminOnly.js";
-import {publicLimiter} from "../middlewares/rateLimit.js";
+import express from 'express';
+import mongoose from 'mongoose';
 import ContentItem from '../../models/ContentItem.js';
 import ContentCategory from '../../models/ContentCategory.js';
 import Category from '../../models/Category.js';
@@ -57,23 +53,15 @@ contentItemRouter.options("/:id", (req, res) => {
 })
 
 //get (alles ophalen)
-contentItemRouter.get('/',publicLimiter, publicApiKey, async (req, res) => {
+contentItemRouter.get('/', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
-
-        const totalItems = await ContentItem.countDocuments({
-            client_id: req.clientId
-        });
-
-        const limit = req.query.limit ? parseInt(req.query.limit) : totalItems || 10;
+        const totalItems = await ContentItem.countDocuments();
+        const limit = req.query.limit ? parseInt(req.query.limit) : totalItems;
         const skip = (page - 1) * limit;
         const totalPages = Math.ceil(totalItems / limit) || 1;
 
-        const contentItems = await ContentItem.find({
-            client_id: req.clientId
-        })
-            .skip(skip)
-            .limit(limit);
+        const contentItems = await ContentItem.find({}).skip(skip).limit(limit);
 
         const collection = {
             items: contentItems,
@@ -99,19 +87,20 @@ contentItemRouter.get('/',publicLimiter, publicApiKey, async (req, res) => {
             }
         };
 
-        res.status(200).json(collection);
+        res.json(collection);
     } catch (e) {
         console.log("Error bij ophalen van content items:", e);
         res.status(500).json({
-            message: "fetch content items gefaald"
+            error: 'fetch content items gefaald',
         });
     }
 });
 
-// CREATE - alleen admin
-contentItemRouter.post("/", publicApiKey, auth, adminOnly, async (req, res) => {
+//POST
+contentItemRouter.post('/', async (req, res) => {
+    console.log("Post ontvangen")
     try {
-        const resolvedCategoryId = await resolveCategoryObjectId(req.body.category_ids);
+        const resolvedCategoryId = await resolveCategoryObjectId(req.body.category_id);
         if (!resolvedCategoryId) {
             return res.status(400).json({
                 message: "Request van de client is ongeldig",
@@ -120,27 +109,26 @@ contentItemRouter.post("/", publicApiKey, auth, adminOnly, async (req, res) => {
         }
 
         const contentItem = new ContentItem({
-            client_id: req.clientId,
             legacyId: req.body.legacyId,
+            client_id: req.body.client_id,
             title: req.body.title,
             body: req.body.body,
-            category_ids: resolvedCategoryId,
+            category_id: resolvedCategoryId,
             is_urgent: req.body.is_urgent,
             is_mandatory: req.body.is_mandatory,
             starts_at: req.body.starts_at,
             ends_at: req.body.ends_at,
             status: req.body.status,
-            created_by: req.auth.sub,
+            created_by: req.body.created_by,
             image: req.body.image
-        });
-
+        })
         await contentItem.save();
         if (resolvedCategoryId) {
             await syncContentCategories(contentItem._id, [resolvedCategoryId]);
         }
-        res.status(201).json(contentItem);
+        res.json(contentItem);
     } catch (e) {
-        console.log(e);
+        console.error("Create content item error:", e);
         res.status(400).json({
             message: "Request van de client is ongeldig",
             error: e.message
@@ -148,21 +136,13 @@ contentItemRouter.post("/", publicApiKey, auth, adminOnly, async (req, res) => {
     }
 });
 
-// GET ONE - publiek per client
-contentItemRouter.get("/:id", publicApiKey, async (req, res) => {
+//get met id
+contentItemRouter.get("/:id", async (req, res) => {
+    console.log("Details opgehaald")
     try {
-        const contentItem = await ContentItem.findOne({
-            _id: req.params.id,
-            client_id: req.clientId
-        });
-
-        if (!contentItem) {
-            return res.status(404).json({
-                message: "Resource van content item bestaat niet op de server"
-            });
-        }
-
-        res.status(200).json(contentItem);
+        const contentItemId = req.params.id;
+        const contentItem = await ContentItem.findById(contentItemId);
+        res.json(contentItem);
     } catch (e) {
         console.error("Error bij ophalen content item id:", e);
         res.status(404).json({
@@ -171,48 +151,53 @@ contentItemRouter.get("/:id", publicApiKey, async (req, res) => {
     }
 });
 
-// UPDATE - alleen admin
-contentItemRouter.put("/:id", publicApiKey, auth, adminOnly, async (req, res) => {
-    try {
-        const newContentItem = {
-            legacyId: req.body.legacyId,
-            title: req.body.title,
-            body: req.body.body,
-            category_ids: req.body.category_ids,
-            is_urgent: req.body.is_urgent,
-            is_mandatory: req.body.is_mandatory,
-            starts_at: req.body.starts_at,
-            ends_at: req.body.ends_at,
-            status: req.body.status,
-            image: req.body.image
-        };
+//put
+contentItemRouter.put("/:id", async (req, res) => {
+    const contentItemId = req.params.id;
 
-        const updatedContentItem = await ContentItem.findOneAndUpdate(
-            {
-                _id: req.params.id,
-                client_id: req.clientId
-            },
-            newContentItem,
-            {
-                new: true,
-                runValidators: true
-            }
+    const resolvedCategoryId = req.body.category_id === undefined
+        ? undefined
+        : await resolveCategoryObjectId(req.body.category_id);
+
+    if (req.body.category_id !== undefined && !resolvedCategoryId) {
+        return res.status(400).json({
+            message: "Request van de client is ongeldig",
+            error: "category_id moet een geldige Category ObjectId zijn, of een bestaand numeriek legacyId, of een bestaande categorienaam"
+        });
+    }
+
+    const newContentItem = {
+        legacyId: req.body.legacyId,
+        client_id: req.body.client_id,
+        title: req.body.title,
+        body: req.body.body,
+        category_id: resolvedCategoryId,
+        is_urgent: req.body.is_urgent,
+        is_mandatory: req.body.is_mandatory,
+        starts_at: req.body.starts_at,
+        ends_at: req.body.ends_at,
+        status: req.body.status,
+        created_by: req.body.created_by,
+        image: req.body.image
+    };
+
+    try {
+        const updatedContentItem = await ContentItem.findByIdAndUpdate(
+            contentItemId, newContentItem,
+            {new: true}
         );
 
-        if (!updatedContentItem) {
-            return res.status(404).json({
-                message: "Content item niet gevonden"
-            });
+        if (resolvedCategoryId) {
+            await syncContentCategories(updatedContentItem._id, [resolvedCategoryId]);
         }
-
-        res.status(200).json({
+        res.json({
             message: "Content item aangepast!",
             contentItem: updatedContentItem
         });
 
     } catch (e) {
         console.error("Update fout:", e);
-        res.status(400).json({
+        res.status(500).json({
             message: "Er ging iets mis",
             error: e.message
         });
@@ -220,13 +205,11 @@ contentItemRouter.put("/:id", publicApiKey, auth, adminOnly, async (req, res) =>
 
 });
 
-// DELETE - alleen admin
-contentItemRouter.delete("/:id", publicApiKey, auth, adminOnly, async (req, res) => {
+//delete
+contentItemRouter.delete("/:id", async (req, res) => {
+    console.log("Delete ontvangen", req.params.id);
     try {
-        const deletedContentItem = await ContentItem.findOneAndDelete({
-            _id: req.params.id,
-            client_id: req.clientId
-        });
+        const deletedContentItem = await ContentItem.findByIdAndDelete(req.params.id);
 
         if (!deletedContentItem) {
             return res.status(404).json({
@@ -243,7 +226,7 @@ contentItemRouter.delete("/:id", publicApiKey, auth, adminOnly, async (req, res)
 
     } catch (e) {
         console.error("Delete error:", e);
-        res.status(400).json({
+        res.status(500).json({
             message: "Fout bij verwijderen",
             error: e.message
         });

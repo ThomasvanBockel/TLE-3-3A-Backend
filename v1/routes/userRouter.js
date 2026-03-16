@@ -1,206 +1,264 @@
 import express from "express";
-import User from "../models/User.js";
-import bcrypt from "bcrypt";
+import User from "../../models/User.js";
+import bcrypt from "bcrypt"
 import mongoose from "mongoose";
-import jwt from "jsonwebtoken";
+import jwt from 'jsonwebtoken';
+import {adminOnly} from "../middlewares/adminOnly.js";
+import {auth} from "../middlewares/auth.js";
 
-import {adminOnly} from "../middleware/adminOnly.js";
-import {auth} from "../middleware/auth.js";
-import {publicApiKey} from "../middlewares/publicApi.js";
-import {loginLimiter} from "../middlewares/rateLimit.js";
+const userRouter = express.Router()
 
-const userRouter = express.Router();
+userRouter.options("/", (req, res) => {
+    res.header("Allow", "POST, GET, OPTIONS")
 
-// GET /api/user -> alleen admin, alleen eigen client
-userRouter.get("/", auth, adminOnly, async (req, res) => {
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+    res.setHeader("Access-Control-Allow-Origin", "*")
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept")
+    res.status(204).send()
+})
+userRouter.options("/:id", (req, res) => {
+    res.header("Allow", "PUT, GET, OPTIONS, DELETE")
+
+    res.setHeader("Access-Control-Allow-Methods", "GET, PUT, OPTIONS, DELETE")
+    res.setHeader("Access-Control-Allow-Origin", "*")
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept")
+    res.status(204).send()
+})
+
+
+// /api/user/admin/edit/:id -> admin can edit user data
+userRouter.put("/admin/edit/:id", auth, adminOnly, async (req, res) => {
     try {
-        const users = await User.find({client_id: req.clientId});
+        // get the user id from the uri
+        const id = req.params.id
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({message: "id is niet valid"});
+        }
 
+        // get the user data
+        const {
+            client_id,
+            first_name,
+            last_name,
+            gender,
+            bsn,
+            email,
+            adres,
+            nationality,
+            postal_code,
+            birth_date,
+            phone_number,
+            is_admin,
+            personalization_enabled
+        } = req.body;
+
+        // get the user by its id
+        const user = await User.findById(id)
+
+        // finding a use with that email
+        const exists = await User.findOne({email: email})
+
+        // checks if the email is the user's email
+        if (exists && user.email !== exists.email) {
+            return res.status(400).json({message: "Email already exists"})
+        }
+
+
+        // check if the first name, last name and email is not empty
+        if (!first_name && !last_name && !email) {
+            return res.status(400).json({message: " these fields cannot be empty"})
+        }
+        // update the user info
+        const updated = await User.findByIdAndUpdate(
+            id,
+            {
+                ...(client_id && {client_id}),
+                ...(first_name && {first_name}),
+                ...(last_name && {last_name}),
+                ...(gender && {gender}),
+                ...(bsn && {bsn}),
+                ...(email && {email}),
+                ...(adres && {adres}),
+                ...(nationality && {nationality}),
+                ...(postal_code && {postal_code}),
+                ...(birth_date && {birth_date}),
+                ...(is_admin && {is_admin}),
+                ...(phone_number && {phone_number}),
+                ...(personalization_enabled !== undefined && {personalization_enabled})
+            },
+            {new: true, runValidators: true}
+        );
+        // error if it's not updated
+        if (!updated) {
+            return res.status(404).json({message: "de user is niet gevonden"})
+        }
+
+        res.status(200).json(updated)
+    } catch (e) {
+        console.log(e)
+    }
+})
+// /api/user/post overload -> all users
+userRouter.get("/", async (req, res) => {
+    try {
+
+        const users = await User.find()
+
+        // only shows this data
         const items = users.map((user) => ({
             id: user.id,
             first_name: user.first_name,
             last_name: user.last_name,
             email: user.email,
-            is_admin: user.is_admin,
-            client_id: user.client_id
+
         }));
-
-        res.status(200).json({items});
+        res.json({items})
     } catch (e) {
-        console.log(e);
-        res.status(500).json({message: "Server error"});
+        console.log(e)
     }
-});
+})
 
-// GET /api/user/:id -> eigen profiel of admin van eigen client
+// get data from one user with id
 userRouter.get("/:id", auth, async (req, res) => {
     try {
-        const id = req.params.id;
+        const id = req.params.id
 
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            return res.status(400).json({message: "id is niet valid"});
+        // find the user with there id
+        const user = await User.findById(id)
+
+
+        if (req.auth.sub !== id) {
+            return res.status(401).json({message: "you can only get your own information"})
         }
-
-        const user = await User.findOne({
-            _id: id,
-            client_id: req.clientId
-        });
 
         if (!user) {
-            return res.status(404).json({message: "user not found"});
+            return res.status(404).json("user not found")
         }
-
-        const isOwnProfile = req.auth.sub === id;
-        const isAdmin = req.auth.is_admin === true;
-
-        if (!isOwnProfile && !isAdmin) {
-            return res.status(403).json({message: "Forbidden"});
-        }
-
-        res.status(200).json({user});
+        res.json({user})
     } catch (e) {
-        console.log(e);
-        res.status(500).json({message: "Server error"});
+        console.log(e)
     }
-});
-
-// POST /api/user/register -> pre-login, via API key
-userRouter.post("/register", publicApiKey, async (req, res) => {
+})
+// register for the user
+userRouter.post("/register", async (req, res) => {
     try {
-        const {
-            first_name,
-            last_name,
-            gender,
-            bsn,
-            email,
-            password,
-            birth_date,
-            phone_number,
-            personalization_enabled
-        } = req.body;
-
-        if (!first_name || !last_name || !email || !password) {
-            return res.status(400).json({message: "empty fields"});
+        if (!req.body.first_name || !req.body.email || !req.body.password || !req.body.last_name) {
+            return res.status(400).json("empty fields")
         }
+        // hashing password
+        const password = req.body.password
+        const SALT_ROUNDS = 10
+        const passwordHashed = await bcrypt.hash(password, SALT_ROUNDS);
 
-        const exists = await User.findOne({
-            email,
-            client_id: req.clientId
-        });
-
+        // if email exist give an error
+        const exists = await User.findOne({email: req.body.email})
         if (exists) {
-            return res.status(400).json({message: "Email already exists"});
+            return res.status(400).json({message: "Email already exists"})
         }
-
-        const passwordHashed = await bcrypt.hash(password, 10);
 
         const user = new User({
-            client_id: req.clientId,
-            first_name,
-            last_name,
-            gender,
-            bsn,
-            email,
+            client_id: req.body.client_id,
+            first_name: req.body.first_name,
+            last_name: req.body.last_name,
+            gender: req.body.gender,
+            email: req.body.email,
+            adres: req.body.adres,
+            nationality: req.body.nationality,
+            postal_code: req.body.postal_code,
             password_hash: passwordHashed,
-            birth_date,
-            phone_number,
-            is_admin: false,
-            personalization_enabled: personalization_enabled ?? true
-        });
-
-        await user.save();
-
-        res.status(201).json({
-            message: "account created",
-            user: {
-                id: user.id,
-                first_name: user.first_name,
-                last_name: user.last_name,
-                email: user.email,
-                client_id: user.client_id
-            }
-        });
+            birth_date: req.body.birth_date,
+            phone_number: req.body.phone_number,
+            is_admin: req.body.is_admin ?? false,
+            personalization_enabled: req.body.personalization_enabled,
+            bsn: req.body.bsn
+        })
+        await user.save()
+        res.status(201).json("account created")
     } catch (e) {
-        console.log(e);
-        res.status(500).json({message: "Server error"});
+        console.log(e)
     }
-});
-
-// POST /api/user/login -> pre-login, via API key
-userRouter.post("/login", publicApiKey, loginLimiter, async (req, res) => {
+})
+// login for the user
+userRouter.post("/login", async (req, res) => {
     try {
-        const {email, password} = req.body;
-
-        if (!email || !password) {
-            return res.status(400).json({message: "empty fields"});
+        if (!req.body.email && !req.body.password) {
+            return res.status(400).json("empty fields")
         }
-
-        const user = await User.findOne({
-            email,
-            client_id: req.clientId
-        });
-
+        // finding the user with email
+        const user = await User.findOne({email: req.body.email})
         if (!user) {
-            return res.status(404).json({message: "user not found"});
+            return res.status(404).json("user not found")
         }
-
-        const isMatch = await bcrypt.compare(password, user.password_hash);
-        if (!isMatch) {
-            return res.status(401).json({message: "password is not correct"});
+        // checking if password matches
+        const password = req.body.password
+        const is_match = await bcrypt.compare(password, user.password_hash);
+        if (!is_match) {
+            return res.status(401).json("login information is not correct")
         }
-
-        const payload = {
-            sub: user.id,
-            clientId: String(user.client_id),
-            is_admin: user.is_admin,
-            role: user.is_admin ? "ADMIN" : "USER"
-        };
-
-        const token = jwt.sign(payload, process.env.JWT_SECRET, {
-            expiresIn: "1h"
-        });
-
-        return res.status(200).json({
-            message: "login success",
-            token,
-            user: {
-                id: user.id,
-                first_name: user.first_name,
-                last_name: user.last_name,
-                email: user.email,
-                is_admin: user.is_admin,
-                client_id: user.client_id
-            }
-        });
+// JWT if it's a user login as a user if it's an admin login as an admin
+        if (user.is_admin === 1) {
+            const role = req.header("x-role");
+            const payload = {sub: user.id, role: 'admin'};
+            const secret = process.env.JWT_SECRET;
+            const token = await jwt.sign(payload, secret, {
+                expiresIn: '1h'
+            });
+            return res.status(200).json({message: "login succes", token, user, role})
+        } else {
+            const payload = {sub: user.id, role: 'user'};
+            const role = req.header("x-role");
+            const secret = process.env.JWT_SECRET;
+            const token = await jwt.sign(payload, secret, {
+                expiresIn: '1h'
+            });
+            return res.status(200).json({message: "login succes", token, user, role})
+        }
+        // JWT if its a user login as a user if its a admin login as a admin
+        if (user.is_admin === 1) {
+            const role = req.header("x-role");
+            const payload = {sub: user.id, role: 'admin'};
+            const secret = process.env.JWT_SECRET;
+            const token = await jwt.sign(payload, secret, {
+                expiresIn: '1h'
+            });
+            return res.status(200).json({message: "login succes", token, user, role})
+        } else {
+            const payload = {sub: user.id, role: 'user'};
+            const role = req.header("x-role");
+            const secret = process.env.JWT_SECRET;
+            const token = await jwt.sign(payload, secret, {
+                expiresIn: '1h'
+            });
+            return res.status(200).json({message: "login succes", token, user, role})
+        }
     } catch (e) {
-        console.log(e);
-        res.status(500).json({message: "Server error"});
+        console.log(e)
     }
-});
+})
 
-// POST /api/user/admin -> admin aanmaken
-// alleen admin van dezelfde client mag dit doen
-userRouter.post("/admin", publicApiKey, async (req, res) => {
+
+// POST /api/users/admin  -> maak admin
+userRouter.post("/admin", async (req, res) => {
     try {
-        console.log("HIT ADMIN ROUTE");
-        const adminExists = await User.exists({
-            client_id: req.clientId,
-            is_admin: true
-        });
-        console.log("adminExists:", adminExists);
+        const adminExists = await User.exists({is_admin: true});
 
         if (adminExists) {
-            return res.status(403).json({
-                message: "An admin already exists for this client. Only an existing admin can create another admin."
-            });
+            const role = req.header("x-role");
+            if (role !== "ADMIN") {
+                return res.status(403).json({message: "Forbidden"});
+            }
         }
 
         const {
+            client_id,
             first_name,
             last_name,
             gender,
             bsn,
             email,
+            adres,
+            nationality,
+            postal_code,
             password,
             birth_date,
             phone_number,
@@ -208,27 +266,25 @@ userRouter.post("/admin", publicApiKey, async (req, res) => {
         } = req.body;
 
         if (!first_name || !last_name || !email || !password) {
-            return res.status(400).json({message: "empty areas"});
+            return res.status(400).json({message: "empty area's"});
         }
 
-        const exists = await User.findOne({
-            email,
-            client_id: req.clientId
-        });
+        const exists = await User.findOne({email});
+        if (exists) return res.status(400).json({message: "Email already exists"});
 
-        if (exists) {
-            return res.status(400).json({message: "Email already exists"});
-        }
-
-        const passwordHashed = await bcrypt.hash(password, 10);
+        const SALT_ROUNDS = 10;
+        const passwordHashed = await bcrypt.hash(password, SALT_ROUNDS);
 
         const adminUser = new User({
-            client_id: req.clientId,
+            client_id,
             first_name,
             last_name,
             gender,
             bsn,
             email,
+            adres,
+            nationality,
+            postal_code,
             password_hash: passwordHashed,
             birth_date,
             phone_number,
@@ -237,185 +293,106 @@ userRouter.post("/admin", publicApiKey, async (req, res) => {
         });
 
         await adminUser.save();
-
-        return res.status(201).json({
-            message: "First admin created",
-            user: adminUser
-        });
+        return res.status(201).json(adminUser);
     } catch (e) {
         console.log(e);
         return res.status(500).json({message: "Server error"});
     }
 });
 
-// PUT /api/user/edit/:id -> user bewerkt eigen profiel
+
+// edit for the user
 userRouter.put("/edit/:id", auth, async (req, res) => {
     try {
-        const id = req.params.id;
-
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            return res.status(400).json({message: "id is niet valid"});
-        }
+        // get the user id from the uri
+        const id = req.params.id
 
         if (req.auth.sub !== id) {
-            return res.status(403).json({message: "you can only edit your own information"});
+            return res.status(401).json({message: "you can only edit your own information"})
         }
-
-        const {
-            first_name,
-            last_name,
-            gender,
-            bsn,
-            email,
-            birth_date,
-            phone_number,
-            personalization_enabled
-        } = req.body;
-
-        const user = await User.findOne({
-            _id: id,
-            client_id: req.clientId
-        });
-
-        if (!user) {
-            return res.status(404).json({message: "user not found"});
-        }
-
-        if (email) {
-            const exists = await User.findOne({
-                email,
-                client_id: req.clientId
-            });
-
-            if (exists && String(exists._id) !== String(user._id)) {
-                return res.status(400).json({message: "Email already exists"});
-            }
-        }
-
-        const updated = await User.findOneAndUpdate(
-            {_id: id, client_id: req.clientId},
-            {
-                ...(first_name && {first_name}),
-                ...(last_name && {last_name}),
-                ...(gender && {gender}),
-                ...(bsn && {bsn}),
-                ...(email && {email}),
-                ...(birth_date && {birth_date}),
-                ...(phone_number && {phone_number}),
-                ...(personalization_enabled !== undefined && {personalization_enabled})
-            },
-            {new: true, runValidators: true}
-        );
-
-        if (!updated) {
-            return res.status(404).json({message: "de user is niet gevonden"});
-        }
-
-        res.status(200).json(updated);
-    } catch (e) {
-        console.log(e);
-        res.status(500).json({message: "Server error"});
-    }
-});
-
-// PUT /api/user/admin/edit/:id -> admin bewerkt user binnen eigen client
-userRouter.put("/admin/edit/:id", auth, adminOnly, async (req, res) => {
-    try {
-        const id = req.params.id;
-
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({message: "id is niet valid"});
         }
 
+        // get the data out of the body
         const {
+            client_id,
             first_name,
             last_name,
             gender,
             bsn,
             email,
+            adres,
+            nationality,
+            postal_code,
             birth_date,
             phone_number,
-            is_admin,
             personalization_enabled
         } = req.body;
 
-        const user = await User.findOne({
-            _id: id,
-            client_id: req.clientId
-        });
+        // get the user by its id
+        const user = await User.findById(id)
 
-        if (!user) {
-            return res.status(404).json({message: "de user is niet gevonden"});
+        // finding a user with that email
+        const exists = await User.findOne({email: email})
+
+        // checks if the email is the user's email
+        if (exists && user.email !== exists.email) {
+            return res.status(400).json({message: "Email already exists"})
         }
 
-        if (email) {
-            const exists = await User.findOne({
-                email,
-                client_id: req.clientId
-            });
-
-            if (exists && String(exists._id) !== String(user._id)) {
-                return res.status(400).json({message: "Email already exists"});
-            }
+        // check if the first name, last name and email is not empty
+        if (!first_name && !last_name && !email) {
+            return res.status(400).json({message: " these fields cannot be empty"})
         }
-
-        const updated = await User.findOneAndUpdate(
-            {_id: id, client_id: req.clientId},
+        // update the user info
+        const updated = await User.findByIdAndUpdate(
+            id,
             {
+                ...(client_id && {client_id}),
                 ...(first_name && {first_name}),
                 ...(last_name && {last_name}),
                 ...(gender && {gender}),
                 ...(bsn && {bsn}),
                 ...(email && {email}),
+                ...(adres && {adres}),
+                ...(nationality && {nationality}),
+                ...(postal_code && {postal_code}),
                 ...(birth_date && {birth_date}),
-                ...(typeof is_admin === "boolean" && {is_admin}),
                 ...(phone_number && {phone_number}),
                 ...(personalization_enabled !== undefined && {personalization_enabled})
             },
             {new: true, runValidators: true}
         );
-
+        // error if it's not updated
         if (!updated) {
-            return res.status(404).json({message: "de user is niet gevonden"});
+            return res.status(404).json({message: "de user is niet gevonden"})
         }
 
-        res.status(200).json(updated);
+        res.status(200).json(updated)
     } catch (e) {
-        console.log(e);
-        res.status(500).json({message: "Server error"});
+        console.log(e)
     }
-});
-
-// DELETE /api/user/delete/:id -> eigen account of admin binnen eigen client
+})
 userRouter.delete("/delete/:id", auth, async (req, res) => {
     try {
-        const id = req.params.id;
+        // get there id from the uri
+        const id = req.params.id
 
+        // check if the ID is a valid mongoose id
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({message: "id is niet valid"});
         }
+        //delete the user by there id
+        const deleted = await User.findByIdAndDelete(id)
 
-        const isOwnProfile = req.auth.sub === id;
-        const isAdmin = req.auth.is_admin === true;
-
-        if (!isOwnProfile && !isAdmin) {
-            return res.status(403).json({message: "Forbidden"});
-        }
-
-        const deleted = await User.findOneAndDelete({
-            _id: id,
-            client_id: req.clientId
-        });
-
+        // error if the user is not deleted
         if (!deleted) {
-            return res.status(404).json({message: "user is niet gevonden"});
+            return res.status(404).json({message: "plant is niet gevonden"})
         }
-
-        res.status(204).send();
+        res.status(204).send()
     } catch (e) {
-        console.log(e);
-        res.status(500).json({message: "gefaald om te verwijderen"});
+        res.status(500).json({message: "gefaald om te verwijderen"})
     }
-});
-
-export default userRouter;
+})
+export default userRouter
