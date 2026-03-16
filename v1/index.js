@@ -8,7 +8,7 @@ dotenv.config();
 
 const v1Router = express.Router();
 v1Router.use(express.json())
-
+console.log("v1 router wordt geladen");
 v1Router.use((req, res, next) => {
     const acceptHeader = req.headers["accept"];
     const method = req.method

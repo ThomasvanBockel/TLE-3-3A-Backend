@@ -5,9 +5,9 @@
   "license": "ISC",
   "author": "",
   "type": "module",
-  "main": "v1/index.js",
+  "main": "index.js",
   "scripts": {
-    "dev": "node --env-file=.env --watch v1/index.js"
+    "dev": "node --env-file=.env --watch index.js"
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
