@@ -14,13 +14,13 @@ http://145.24.237.215:8000
 API base URL:
 
 ```text
-http://145.24.237.215:8000/api
+http://145.24.237.215:8000/api/v2
 ```
 
 Voorbeeld in frontend:
 
 ```js
-const API_BASE_URL = "http://145.24.237.215:8000/api";
+const API_BASE_URL = "http://145.24.237.215:8000/api/v2";
 ```
 
 ---
@@ -77,6 +77,7 @@ console.log(data);
 const response = await fetch(`${API_BASE_URL}/some-route`, {
     method: "POST",
     headers: {
+        "Accept": "application/json",
         "Content-Type": "application/json"
     },
     body: JSON.stringify(payload)
@@ -92,6 +93,7 @@ console.log(data);
 const response = await fetch(`${API_BASE_URL}/some-route/ID`, {
     method: "PUT",
     headers: {
+        "Accept": "application/json",
         "Content-Type": "application/json"
     },
     body: JSON.stringify(payload)
@@ -229,6 +231,7 @@ const payload = {
 const response = await fetch(`${API_BASE_URL}/user/register`, {
     method: "POST",
     headers: {
+        "Accept": "application/json",
         "Content-Type": "application/json",
         "x-api-key": apiKey
     },
@@ -255,6 +258,7 @@ Verplichte velden:
 
 Headers:
 
+- `Accept: application/json`
 - `Content-Type: application/json`
 - `x-api-key: ...`
 
@@ -278,6 +282,7 @@ const payload = {
 const response = await fetch(`${API_BASE_URL}/user/login`, {
     method: "POST",
     headers: {
+        "Accept": "application/json",
         "Content-Type": "application/json",
         "x-api-key": apiKey
     },
@@ -299,6 +304,7 @@ Huidige beveiliging:
 
 Headers:
 
+- `Accept: application/json`
 - `Content-Type: application/json`
 - `x-api-key: ...`
 
@@ -381,6 +387,7 @@ const payload = {
 await fetch(`${API_BASE_URL}/user/edit/${userId}`, {
     method: "PUT",
     headers: {
+        "Accept": "application/json",
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`
     },
@@ -459,6 +466,7 @@ Seed categorieën.
 
 Headers in de nieuwere variant:
 
+- `AdminOnly`
 - `x-api-key`
 - `Authorization: Bearer ...`
 
@@ -510,7 +518,6 @@ Maakt een content item aan.
 
 Op basis van het huidige routerbestand worden deze velden gebruikt:
 
-- `legacyId` (optioneel)
 - `title`
 - `body`
 - `content_type` (let op: in sommige nieuwere modelversies is dit vervangen door `category_ids`)
@@ -921,8 +928,9 @@ Verwijdert een document.
 
 Headers:
 
-- `x-api-key`
-- `Authorization: Bearer ...`
+- `Accept: application/json`
+- `x-api-key: apikey`
+- `Authorization: Bearer ${token}`
 
 ---
 
@@ -940,7 +948,12 @@ const payload = {
 
 const response = await fetch(`${API_BASE_URL}/reports`, {
     method: "POST",
-    headers: getAuthHeaders(),
+    headers: {
+        "Accept": "application/json",
+        "x-api-key": apiKey,
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+    },
     body: JSON.stringify(payload)
 });
 
@@ -971,6 +984,8 @@ Verplicht:
 
 Headers:
 
+- `Accept: application/json`
+- `Content-Type: application/json`
 - `x-api-key`
 - `Authorization: Bearer ...`
 
@@ -983,6 +998,8 @@ Voorbeeld met API key + bearer token:
 ```js
 const docs = await apiRequest("/documents", "GET", null, {
     headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
         "x-api-key": apiKey,
         Authorization: `Bearer ${token}`
     }
@@ -995,10 +1012,8 @@ const docs = await apiRequest("/documents", "GET", null, {
 
 1. De codebase bevat zowel oudere als nieuwere routerversies. Sommige routes zijn al beveiligd met `publicApiKey` en
    `auth`, andere nog niet.
-2. Gebruik bij login en eerste admin-aanmaak meestal **geen** bearer token, maar wel de juiste `x-api-key` als de route
-   `publicApiKey` gebruikt.
-3. JWT tokens verlopen. Bij een fout als `jwt expired` moet eerst opnieuw worden ingelogd.
-4. Controleer altijd de exacte bodyvelden per router, omdat modellen en routers niet overal volledig gelijk lopen.
+2. JWT tokens verlopen. Bij een fout als `jwt expired` moet eerst opnieuw worden ingelogd.
+3. Controleer altijd de exacte bodyvelden per router, omdat modellen en routers niet overal volledig gelijk lopen.
 
 ---
 
