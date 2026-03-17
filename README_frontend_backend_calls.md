@@ -934,6 +934,111 @@ Headers:
 
 ---
 
+## Recommendations
+
+Router mount:
+
+```text
+/api/recommendations
+```
+
+### GET v2/api/recommendations/user/:userId
+
+Gets personalized recommendations for a logged-in user.
+
+Current security:
+
+- `auth`
+- `publicApiKey`
+
+Required headers:
+
+- `Accept: application/json`
+- `Authorization: Bearer ...`
+- `x-api-key: ...`
+
+Supported query parameters:
+
+- `limit` (default `4`, min `1`, max `50`)
+- `persist` (`true`/`false`, default `true`)
+- `debug` (`true`/`false`, default `false`)
+
+Brief meaning:
+
+- `limit`: number of recommendations returned.
+- `persist`: when `true`, the backend stores the recommendation run and ranked items in the database.
+- `debug`: when `true`, the response includes extra diagnostics (counts used for troubleshooting).
+
+Note:
+
+- The user must be logged in.
+- In the current implementation, the user is taken from the JWT (not from `:userId`).
+
+Frontend call:
+
+```js
+const userId = "USER_ID";
+
+const response = await fetch(
+    `${API_BASE_URL}/recommendations/user/${userId}?limit=4&persist=true`,
+    {
+        method: "GET",
+        headers: {
+            "Accept": "application/json",
+            "x-api-key": apiKey,
+            Authorization: `Bearer ${token}`
+        }
+    }
+);
+
+const data = await response.json();
+console.log(data);
+```
+
+Response fields (ranking):
+
+- `rank_position`: the position of the item in the returned ranking (`1` is the highest-ranked result).
+- `score`: final ranking score per item (0 to 1). Higher means the item is ranked as more relevant.
+- `reason.rule_boost`: extra bonus added by business rules (for example urgency, mandatory flag, preferred category match, and freshness).
+- `reason.preferred_categories`: shows which of the content item's categories match the user's saved interests. Matching preferred categories can increase the ranking through the rule boost.
+
+### GET /api/recommendations/guest
+
+Gets random content recommendations for guests (not logged in).
+
+Current security:
+
+- no `auth`
+- no `publicApiKey`
+
+Required headers:
+
+- `Accept: application/json` (recommended)
+
+Supported query parameters:
+
+- `limit` (default `4`, min `1`, max `20`)
+
+Brief meaning:
+
+- `limit`: number of random guest recommendations returned.
+
+Frontend call:
+
+```js
+const response = await fetch(`${API_BASE_URL}/recommendations/guest?limit=4`, {
+    method: "GET",
+    headers: {
+        "Accept": "application/json"
+    }
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+---
+
 ## POST /api/reports
 
 ```js
