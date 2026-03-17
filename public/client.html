@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client aanmaken — TLE-3</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=Instrument+Sans:wght@400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav>
+    <div class="nav-logo">TLE<span>.</span>3</div>
+    <div class="nav-links">
+        <a href="register.html">Registreren</a>
+        <a href="login.html">Inloggen</a>
+        <a href="client.html" class="active">Client</a>
+        <a href="apikey.html">API Key</a>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+        <div class="nav-user" id="nav-user"></div>
+        <button class="logout-btn" onclick="uitloggen()">Uitloggen</button>
+    </div>
+</nav>
+
+<main>
+    <div class="page-deco"><span>03</span>Client</div>
+    <div class="container">
+        <div class="page-eyebrow">Stap 3 van 4</div>
+        <h1>Client aanmaken</h1>
+        <p class="page-sub">Registreer een client die gekoppeld is aan jouw account.</p>
+
+        <div class="session-badge" id="session-badge">
+            <div class="badge-dot"></div>
+            <span id="session-name">Laden...</span>
+        </div>
+
+        <div class="card">
+            <div class="field">
+                <label for="client-name">Naam van de client</label>
+                <input type="text" id="client-name" placeholder="bijv. Acme B.V." autocomplete="off">
+            </div>
+            <div class="field">
+                <label for="client-active">Status</label>
+                <select id="client-active">
+                    <option value="true">Actief</option>
+                    <option value="false">Inactief</option>
+                </select>
+            </div>
+            <button class="btn" id="btn" onclick="doCreateClient()">
+                <span id="btn-text">Client aanmaken</span>
+                <span class="arrow">→</span>
+            </button>
+            <div class="msg" id="msg"></div>
+        </div>
+
+        <div id="clients-section" style="display:none">
+            <h3 class="list-title">Aangemaakt deze sessie</h3>
+            <div id="clients-list" class="record-list"></div>
+        </div>
+    </div>
+</main>
+
+<script>
+    const token      = sessionStorage.getItem('token');
+    const userId     = sessionStorage.getItem('userId');
+    const userName   = sessionStorage.getItem('userName');
+
+    if (!token) window.location.href = 'login.html';
+
+    window.addEventListener('DOMContentLoaded', () => {
+        if (userName) {
+            document.getElementById('session-name').textContent = 'Ingelogd als ' + userName;
+            document.getElementById('nav-user').textContent = userName;
+        }
+    });
+
+    async function doCreateClient() {
+        const name      = document.getElementById('client-name').value.trim();
+        const is_active = document.getElementById('client-active').value === 'true';
+        const btn       = document.getElementById('btn');
+        const btnText   = document.getElementById('btn-text');
+
+        showMsg('', '');
+
+        if (!name) { showMsg('Geef de client een naam.', 'err'); return; }
+
+        btn.disabled = true;
+        btnText.textContent = 'Bezig...';
+
+        try {
+            const res = await fetch('/api/clients', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                body: JSON.stringify({ name, is_active, client_user_id: userId })
+            });
+
+            const data = await res.json();
+
+            if (res.status === 201 || res.ok) {
+                const clientId = data._id || data.id;
+                const clientName = data.name || name;
+
+                sessionStorage.setItem('clientId', clientId);
+                sessionStorage.setItem('clientName', clientName);
+
+                addToList({ id: clientId, name: clientName, is_active: data.is_active ?? is_active });
+
+                showMsg('Client "' + clientName + '" aangemaakt! Je wordt doorgestuurd...', 'ok');
+                document.getElementById('client-name').value = '';
+
+                document.getElementById('nav-apikey').classList.remove('locked');
+
+                setTimeout(() => window.location.href = 'apikey.html', 1500);
+            } else {
+                showMsg(data.message || 'Aanmaken mislukt.', 'err');
+            }
+        } catch (e) {
+            showMsg('Verbindingsfout: ' + e.message, 'err');
+        }
+
+        btn.disabled = false;
+        btnText.textContent = 'Client aanmaken';
+    }
+
+    function addToList(client) {
+        const section = document.getElementById('clients-section');
+        const list    = document.getElementById('clients-list');
+        section.style.display = 'block';
+
+        const item = document.createElement('div');
+        item.className = 'record-item';
+        item.innerHTML = `
+        <div>
+          <div class="record-name">${esc(client.name)}</div>
+          <div class="record-id">${esc(client.id)}</div>
+        </div>
+        <div class="record-meta">
+          <span class="status-badge ${client.is_active ? 'active' : 'inactive'}">
+            ${client.is_active ? 'actief' : 'inactief'}
+          </span>
+          <button class="use-btn" onclick="useClient('${client.id}')">Gebruik →</button>
+        </div>
+      `;
+        list.prepend(item);
+    }
+
+    function useClient(id) {
+        sessionStorage.setItem('clientId', id);
+        window.location.href = 'apikey.html';
+    }
+
+    function showMsg(text, type) {
+        const el = document.getElementById('msg');
+        el.className = 'msg ' + (type || '');
+        el.textContent = text;
+    }
+
+    function esc(str) {
+        return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    document.addEventListener('keydown', e => { if (e.key === 'Enter') doCreateClient(); });
+    function uitloggen() {
+        sessionStorage.clear();
+        window.location.href = 'login.html';
+    }
+</script>
+</body>
+</html>

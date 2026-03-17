@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registreren — TLE-3</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=Instrument+Sans:wght@400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav>
+    <div class="nav-logo">TLE<span>.</span>3</div>
+    <div class="nav-links">
+        <a href="register.html" class="active">Registreren</a>
+        <a href="login.html">Inloggen</a>
+        <a href="client.html" class="locked">Client</a>
+        <a href="apikey.html" class="locked">API Key</a>
+    </div>
+</nav>
+
+<main>
+    <div class="page-deco"><span>01</span>Registreren</div>
+    <div class="container">
+        <div class="page-eyebrow">Stap 1 van 4</div>
+        <h1>Account aanmaken</h1>
+        <p class="page-sub">Maak een client user account aan om toegang te krijgen tot het platform.</p>
+
+        <div class="card">
+            <div class="field">
+                <label for="name">Gebruikersnaam</label>
+                <input type="text" id="name" placeholder="bijv. jan_de_vries" autocomplete="off">
+            </div>
+            <div class="field">
+                <label for="password">Wachtwoord</label>
+                <input type="password" id="password" placeholder="Minimaal 6 tekens">
+            </div>
+            <div class="field">
+                <label for="role">Rol</label>
+                <select id="role">
+                    <option value="false">Gebruiker</option>
+                    <option value="true">Admin</option>
+                </select>
+            </div>
+            <button class="btn" id="btn" onclick="doRegister()">
+                <span id="btn-text">Account aanmaken</span>
+                <span class="arrow">→</span>
+            </button>
+            <div class="msg" id="msg"></div>
+            <div class="form-footer">
+                Al een account? <a href="login.html">Inloggen</a>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+    async function doRegister() {
+        const name     = document.getElementById('name').value.trim();
+        const password = document.getElementById('password').value;
+        const is_admin = document.getElementById('role').value === 'true';
+        const msg      = document.getElementById('msg');
+        const btn      = document.getElementById('btn');
+        const btnText  = document.getElementById('btn-text');
+
+        msg.className = 'msg';
+        msg.textContent = '';
+
+        if (!name || !password) { showMsg('Vul alle velden in.', 'err'); return; }
+        if (password.length < 6) { showMsg('Wachtwoord moet minimaal 6 tekens zijn.', 'err'); return; }
+
+        btn.disabled = true;
+        btnText.textContent = 'Bezig...';
+
+        try {
+            const res = await fetch('/api/client-users/register', {
+                method: 'POST',
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                body: JSON.stringify({ name, password, is_admin })
+            });
+
+            if (res.status === 201) {
+                showMsg('Account aangemaakt! Je wordt doorgestuurd naar inloggen...', 'ok');
+                sessionStorage.setItem('prefill_name', name);
+                setTimeout(() => window.location.href = 'login.html', 1400);
+            } else {
+                const data = await res.json();
+                showMsg(data.message || data || 'Registratie mislukt.', 'err');
+            }
+        } catch (e) {
+            showMsg('Verbindingsfout: ' + e.message, 'err');
+        }
+
+        btn.disabled = false;
+        btnText.textContent = 'Account aanmaken';
+    }
+
+    function showMsg(text, type) {
+        const el = document.getElementById('msg');
+        el.className = 'msg ' + type;
+        el.textContent = text;
+    }
+
+    document.addEventListener('keydown', e => { if (e.key === 'Enter') doRegister(); });
+</script>
+</body>
+</html>

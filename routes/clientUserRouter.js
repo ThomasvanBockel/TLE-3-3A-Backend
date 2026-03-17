@@ -90,7 +90,7 @@ clientUserRouter.get("/:id", auth, async (req, res) => {
             return res.status(401).json({message: "you can only get your own information"})
         }
         if (!clientUser) {
-            return res.status(404).json("client user not found")
+            return res.status(404).json({message: "client user not found"})
         }
         res.json({clientUser})
     } catch (e) {
@@ -101,8 +101,7 @@ clientUserRouter.get("/:id", auth, async (req, res) => {
 clientUserRouter.post("/register", async (req, res) => {
     try {
         if (!req.body.name || !req.body.password ) {
-            return res.status(400).json("empty fields")
-        }
+            return res.status(400).json({ message: "Vul alle velden in" })        }
         // hashing password
         const password = req.body.password
         const SALT_ROUNDS = 10
@@ -114,7 +113,7 @@ clientUserRouter.post("/register", async (req, res) => {
             is_admin: req.body.is_admin ?? false,
         })
         await clientUser.save()
-        res.status(201).json("account created")
+        res.status(201).json({message: "account created"})
     } catch (e) {
         console.log(e)
     }
@@ -123,18 +122,18 @@ clientUserRouter.post("/register", async (req, res) => {
 clientUserRouter.post("/login", async (req, res) => {
     try {
         if (!req.body.password || !req.body.name) {
-            return res.status(400).json("empty field")
+            return res.status(400).json({message: "empty field"})
         }
 
         const clientUser = await ClientUser.findOne({name: req.body.name})
         if (!clientUser) {
-            return res.status(404).json("login information is not correct")
+            return res.status(404).json({message: "login information is not correct"})
         }
         // checking if password matches
         const password = req.body.password
         const is_match = await bcrypt.compare(password, clientUser.password_hash);
         if (!is_match) {
-            return res.status(401).json("login information is not correct")
+            return res.status(401).json({message: "login information is not correct"})
         }
 // JWT if it's a user login as a user if it's an admin login as an admin
         if (clientUser.is_admin === 1) {
