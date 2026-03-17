@@ -50,6 +50,7 @@ clientRouter.post("/", async (req, res) => {
         const client = new Client({
             name: req.body.name,
             is_active: req.body.is_active ?? true,
+            client_user_id: req.body.client_user_id
         });
 
         await client.save();
@@ -80,7 +81,7 @@ clientRouter.get("/:id", async (req, res) => {
 // POST create client
 clientRouter.post("/", async (req, res) => {
     try {
-        const {name, is_active} = req.body;
+        const {name, is_active, client_user_id} = req.body;
 
         const existingClient = await Client.findOne({name});
         if (existingClient) {
@@ -89,7 +90,8 @@ clientRouter.post("/", async (req, res) => {
 
         const client = await Client.create({
             name,
-            is_active: is_active ?? true
+            is_active: is_active ?? true,
+            client_user_id
         });
 
         res.status(201).json(client);
@@ -105,7 +107,8 @@ clientRouter.put("/:id", async (req, res) => {
         const clientId = req.params.id;
         const updatedData = {
             name: req.body.name,
-            is_active: req.body.is_active ?? true
+            is_active: req.body.is_active ?? true,
+            client_user_id: req.body.client_user_id
         };
         const updatedClient = await Client.findByIdAndUpdate(clientId, updatedData, {new: true});
         res.json(updatedClient);

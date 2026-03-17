@@ -1,5 +1,6 @@
 import express from "express";
 import userRouter from "./userRouter.js"
+import clientUserRouter from "./clientUserRouter.js";
 import contentItemRouter from "./contentItemRouter.js";
 import InquiryRouter from "./inquiryRouter.js";
 import categoryRouter from "./categoryRouter.js";
@@ -14,6 +15,7 @@ import seedRouter from "./seedRouter.js";
 
 const router = express.Router()
 router.use("/api/user", userRouter)
+router.use("/api/client-users", clientUserRouter)
 router.use("/api/inquiry", InquiryRouter)
 router.use("/api/user", userRouter)
 router.use("/api/inquiry", inquiryRouter)
