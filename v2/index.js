@@ -17,7 +17,7 @@ v2Router.use((req, res, next) => {
 
     console.log(`Client accepteert: ${acceptHeader}`);
     if (method === "OPTIONS") {
-        res.header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization");
+        res.header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization, x-api-key");
         return next();
     }
     if (!acceptHeader ||
