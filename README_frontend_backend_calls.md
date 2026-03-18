@@ -14,7 +14,7 @@ http://145.24.237.215:8000
 API base URL:
 
 ```text
-http://145.24.237.215:8000/api/v2
+http://145.24.237.215:8000/v2/api
 ```
 
 Voorbeeld in frontend:
@@ -33,7 +33,7 @@ De backend gebruikt op sommige routes een API key en op sommige routes een JWT b
 
 Gebruik voor `POST`, `PUT` en `PATCH` meestal:
 
-```http
+```header
 Content-Type: application/json
 Accept: application/json
 ```
@@ -42,7 +42,7 @@ Accept: application/json
 
 Routes met `publicApiKey` verwachten:
 
-```http
+```header
 x-api-key: JOUW_API_KEY
 ```
 
@@ -161,6 +161,8 @@ Headers:
 const userId = "USER_ID";
 const response = await fetch(`${API_BASE_URL}/user/${userId}`, {
     headers: {
+        "Accept": "application/json",
+        "Context-Type": "application/json",
         Authorization: `Bearer ${token}`
     }
 });
@@ -999,8 +1001,10 @@ Response fields (ranking):
 
 - `rank_position`: the position of the item in the returned ranking (`1` is the highest-ranked result).
 - `score`: final ranking score per item (0 to 1). Higher means the item is ranked as more relevant.
-- `reason.rule_boost`: extra bonus added by business rules (for example urgency, mandatory flag, preferred category match, and freshness).
-- `reason.preferred_categories`: shows which of the content item's categories match the user's saved interests. Matching preferred categories can increase the ranking through the rule boost.
+- `reason.rule_boost`: extra bonus added by business rules (for example urgency, mandatory flag, preferred category
+  match, and freshness).
+- `reason.preferred_categories`: shows which of the content item's categories match the user's saved interests. Matching
+  preferred categories can increase the ranking through the rule boost.
 
 ### GET /api/recommendations/guest
 
