@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
-import ClientUser from "../models/ClientUser.js";
-import Client from "../models/Client.js";
+import ClientUser from "../../models/ClientUser.js";
+import Client from "../../models/Client.js";
 
 export async function clientAuth(req, res, next) {
     try {

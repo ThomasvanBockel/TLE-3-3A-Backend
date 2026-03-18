@@ -2,7 +2,8 @@ import cors from "cors";
 
 const allowedOrigins = [
     "http://145.24.237.124",
-    "http://145.24.237.144"
+    "http://145.24.237.144",
+    "http://127.0.0.1:8000"
 ];
 
 export const corsMiddleware = cors({
