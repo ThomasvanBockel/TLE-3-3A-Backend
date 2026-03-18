@@ -37,6 +37,10 @@ userRouter.get("/:id", auth, async (req, res) => {
     try {
         const id = req.params.id;
 
+        if (id !== req.auth.sub) {
+            return res.status(429).json({message: "not the user"})
+        }
+
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({message: "id is niet valid"});
         }
