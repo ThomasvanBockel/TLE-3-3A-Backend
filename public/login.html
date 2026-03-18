@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Client Login</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 500px;
+            margin: 40px auto;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        input, button {
+            padding: 10px;
+            font-size: 16px;
+        }
+
+        .message {
+            margin-top: 16px;
+        }
+    </style>
+</head>
+<body>
+<h1>Client login</h1>
+
+<form id="loginForm">
+    <input type="text" id="name" placeholder="Gebruikersnaam" required/>
+    <input type="password" id="password" placeholder="Wachtwoord" required/>
+    <button type="submit">Inloggen</button>
+</form>
+
+<p><a href="index.html">Nog geen account? Register</a></p>
+<div class="message" id="message"></div>
+
+<script>
+    const API_BASE_URL = "http://127.0.0.1:8000/api";
+
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const payload = {
+            name: document.getElementById("name").value,
+            password: document.getElementById("password").value
+        };
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/client-users/login`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || "Login mislukt");
+            }
+
+            localStorage.setItem("clientToken", data.token);
+            localStorage.setItem("clientUser", JSON.stringify(data.clientUser));
+
+            window.location.href = "/dashboard.html";
+        } catch (error) {
+            document.getElementById("message").textContent = error.message;
+        }
+    });
+</script>
+</body>
+</html>

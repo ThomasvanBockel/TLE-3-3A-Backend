@@ -10,6 +10,11 @@ console.log("Index.js wordt uitgevoerd");
 app.use(corsMiddleware);
 app.use(express.json());
 
+// root route
+app.get("/", (req, res) => {
+    res.sendFile(new URL("./public/index.html", import.meta.url).pathname);
+});
+
 app.use("/v1", v1Router);
 app.use("/v2", v2Router);
 
