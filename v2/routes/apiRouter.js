@@ -2,6 +2,7 @@ import express from "express";
 import ClientApp from "../../models/ClientApp.js";
 import Client from "../../models/Client.js";
 import {generateApiKey, hashApiKey} from "../utils/apiKey.js";
+import {writeAuditLog} from "../services/auditService.js";
 
 const apiRouter = express.Router();
 
@@ -10,10 +11,23 @@ apiRouter.get("/client-apps", async (req, res) => {
     try {
         const clientApps = await ClientApp.find().populate("client_id");
 
+        await writeAuditLog({
+            req,
+            eventType: "CLIENT_APP_LIST",
+            status: "SUCCESS",
+            details: {result_count: clientApps.length}
+        });
+
         res.status(200).json({
             items: clientApps
         });
     } catch (error) {
+        await writeAuditLog({
+            req,
+            eventType: "CLIENT_APP_LIST",
+            status: "FAILURE",
+            details: {reason: error?.message || "unknown"}
+        });
         console.error(error);
         res.status(500).json({message: "Server error"});
     }
@@ -47,6 +61,21 @@ apiRouter.post("/client-apps", async (req, res) => {
             is_active: true
         });
 
+        await writeAuditLog({
+            req,
+            eventType: "CLIENT_APP_CREATED",
+            status: "SUCCESS",
+            targetType: "ClientApp",
+            targetId: clientApp.id,
+            clientId: client_id,
+            afterState: {
+                client_app_id: clientApp.id,
+                client_id,
+                name,
+                is_active: true
+            }
+        });
+
         res.status(201).json({
             message: "Client app created",
             clientAppId: clientApp.id,
@@ -54,6 +83,13 @@ apiRouter.post("/client-apps", async (req, res) => {
             apiKey: rawKey
         });
     } catch (error) {
+        await writeAuditLog({
+            req,
+            eventType: "CLIENT_APP_CREATED",
+            status: "FAILURE",
+            clientId: req?.body?.client_id,
+            details: {reason: error?.message || "unknown"}
+        });
         console.error(error);
         res.status(500).json({message: "Server error"});
     }
@@ -62,6 +98,7 @@ apiRouter.post("/client-apps", async (req, res) => {
 // DELETE client app
 apiRouter.delete("/client-apps/:id", async (req, res) => {
     try {
+        const existingClientApp = await ClientApp.findById(req.params.id);
         const deletedClientApp = await ClientApp.findByIdAndDelete(req.params.id);
 
         if (!deletedClientApp) {
@@ -70,11 +107,34 @@ apiRouter.delete("/client-apps/:id", async (req, res) => {
             });
         }
 
+        await writeAuditLog({
+            req,
+            eventType: "CLIENT_APP_DELETED",
+            status: "SUCCESS",
+            targetType: "ClientApp",
+            targetId: req.params.id,
+            clientId: existingClientApp?.client_id,
+            beforeState: {
+                client_app_id: req.params.id,
+                client_id: existingClientApp?.client_id || null,
+                name: existingClientApp?.name || null,
+                is_active: existingClientApp?.is_active || null
+            }
+        });
+
         res.status(200).json({
             message: "Client app deleted successfully",
             deletedClientAppId: req.params.id
         });
     } catch (error) {
+        await writeAuditLog({
+            req,
+            eventType: "CLIENT_APP_DELETED",
+            status: "FAILURE",
+            targetType: "ClientApp",
+            targetId: req.params.id,
+            details: {reason: error?.message || "unknown"}
+        });
         console.error(error);
         res.status(400).json({
             message: "Invalid client app id"

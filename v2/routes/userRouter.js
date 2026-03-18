@@ -7,6 +7,7 @@ import {adminOnly} from "../middlewares/adminOnly.js";
 import {auth} from "../middlewares/auth.js";
 import {publicApiKey} from "../middlewares/publicApi.js";
 import {loginLimiter} from "../middlewares/rateLimit.js";
+import {writeAuditLog} from "../services/auditService.js";
 
 const userRouter = express.Router();
 
@@ -142,6 +143,13 @@ userRouter.post("/login", publicApiKey, loginLimiter, async (req, res) => {
         const {email, password} = req.body;
 
         if (!email || !password) {
+            await writeAuditLog({
+                req,
+                eventType: "AUTH_LOGIN",
+                status: "FAILURE",
+                clientId: req.clientId,
+                details: {reason: "empty_fields", email: email || null}
+            });
             return res.status(400).json({message: "empty fields"});
         }
 
@@ -151,11 +159,26 @@ userRouter.post("/login", publicApiKey, loginLimiter, async (req, res) => {
         });
 
         if (!user) {
+            await writeAuditLog({
+                req,
+                eventType: "AUTH_LOGIN",
+                status: "FAILURE",
+                clientId: req.clientId,
+                details: {reason: "user_not_found", email}
+            });
             return res.status(404).json({message: "user not found"});
         }
 
         const isMatch = await bcrypt.compare(password, user.password_hash);
         if (!isMatch) {
+            await writeAuditLog({
+                req,
+                eventType: "AUTH_LOGIN",
+                status: "FAILURE",
+                actorUserId: user._id,
+                clientId: req.clientId,
+                details: {reason: "invalid_password", email}
+            });
             return res.status(401).json({message: "password is not correct"});
         }
 
@@ -168,6 +191,17 @@ userRouter.post("/login", publicApiKey, loginLimiter, async (req, res) => {
 
         const token = jwt.sign(payload, process.env.JWT_SECRET, {
             expiresIn: "1h"
+        });
+
+        await writeAuditLog({
+            req,
+            eventType: "AUTH_LOGIN",
+            status: "SUCCESS",
+            actorUserId: user._id,
+            targetType: "User",
+            targetId: user._id,
+            clientId: req.clientId,
+            details: {email: user.email}
         });
 
         return res.status(200).json({
@@ -183,6 +217,13 @@ userRouter.post("/login", publicApiKey, loginLimiter, async (req, res) => {
             }
         });
     } catch (e) {
+        await writeAuditLog({
+            req,
+            eventType: "AUTH_LOGIN",
+            status: "FAILURE",
+            clientId: req.clientId,
+            details: {reason: e?.message || "unknown"}
+        });
         console.log(e);
         res.status(500).json({message: "Server error"});
     }
@@ -200,6 +241,13 @@ userRouter.post("/admin", publicApiKey, async (req, res) => {
         console.log("adminExists:", adminExists);
 
         if (adminExists) {
+            await writeAuditLog({
+                req,
+                eventType: "ADMIN_BOOTSTRAP_CREATE",
+                status: "FAILURE",
+                clientId: req.clientId,
+                details: {reason: "admin_already_exists"}
+            });
             return res.status(403).json({
                 message: "An admin already exists for this client. Only an existing admin can create another admin."
             });
@@ -248,11 +296,32 @@ userRouter.post("/admin", publicApiKey, async (req, res) => {
 
         await adminUser.save();
 
+        await writeAuditLog({
+            req,
+            eventType: "ADMIN_BOOTSTRAP_CREATE",
+            status: "SUCCESS",
+            targetType: "User",
+            targetId: adminUser._id,
+            clientId: req.clientId,
+            afterState: {
+                user_id: adminUser._id,
+                email: adminUser.email,
+                is_admin: true
+            }
+        });
+
         return res.status(201).json({
             message: "First admin created",
             user: adminUser
         });
     } catch (e) {
+        await writeAuditLog({
+            req,
+            eventType: "ADMIN_BOOTSTRAP_CREATE",
+            status: "FAILURE",
+            clientId: req.clientId,
+            details: {reason: e?.message || "unknown"}
+        });
         console.log(e);
         return res.status(500).json({message: "Server error"});
     }

@@ -13,6 +13,7 @@ import clientRouter from "./clientRouter.js";
 import reportRouter from "./reportRouter.js";
 import seedRouter from "./seedRouter.js";
 import userInterestRouter from "./userInterestRouter.js";
+import auditLogRouter from "./auditLogRouter.js";
 
 const router = express.Router()
 router.use("/api/user", userRouter)
@@ -30,5 +31,6 @@ router.use("/api/clients", clientRouter)
 router.use("/api/seed", seedRouter)
 router.use("/api/reports", reportRouter);
 router.use("/api/user-interests", userInterestRouter);
+router.use("/api/audit-logs", auditLogRouter);
 
 export default router;
