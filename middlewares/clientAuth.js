@@ -20,13 +20,13 @@ export async function clientAuth(req, res, next) {
 
         const client = await Client.findOne({client_user_id: clientUser._id});
         if (!client) {
-            return res.status(404).json({message: "Client not found for this account"});
+            return res.status(404).json({message: "Client not found"});
         }
 
         req.clientAuth = decoded;
         req.clientUser = clientUser;
-        req.clientUserId = clientUser._id;
-        req.clientId = client._id;
+        req.clientUserId = String(clientUser._id);
+        req.clientId = String(client._id);
         req.clientRole = clientUser.is_admin ? "ADMIN" : "CLIENT_USER";
 
         next();

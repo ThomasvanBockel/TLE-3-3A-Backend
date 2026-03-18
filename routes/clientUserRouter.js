@@ -1,110 +1,98 @@
 import express from "express";
 import ClientUser from "../models/ClientUser.js";
 import Client from "../models/Client.js";
-import bcrypt from "bcrypt"
+import bcrypt from "bcrypt";
 import mongoose from "mongoose";
-import jwt from 'jsonwebtoken';
-import {adminOnly} from "../middleware/adminOnly.js";
-import {auth} from "../middleware/auth.js";
+import jwt from "jsonwebtoken";
+import {clientAuth} from "../middlewares/clientAuth.js";
+import {clientAdminOnly} from "../middlewares/clientAdminOnly.js";
+import {clientLoginLimiter} from "../middlewares/clientLoginLimiter.js";
 
-const clientUserRouter = express.Router()
+const clientUserRouter = express.Router();
 
 clientUserRouter.options("/", (req, res) => {
-    res.header("Allow", "POST, GET, OPTIONS")
+    res.header("Allow", "POST, GET, OPTIONS");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization");
+    res.status(204).send();
+});
 
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-    res.setHeader("Access-Control-Allow-Origin", "*")
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept")
-    res.status(204).send()
-})
 clientUserRouter.options("/:id", (req, res) => {
-    res.header("Allow", "PUT, GET, OPTIONS, DELETE")
+    res.header("Allow", "PUT, GET, OPTIONS, DELETE");
+    res.setHeader("Access-Control-Allow-Methods", "GET, PUT, OPTIONS, DELETE");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization");
+    res.status(204).send();
+});
 
-    res.setHeader("Access-Control-Allow-Methods", "GET, PUT, OPTIONS, DELETE")
-    res.setHeader("Access-Control-Allow-Origin", "*")
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept")
-    res.status(204).send()
-})
-
-
-//edit voor admin
-clientUserRouter.put("/admin/edit/:id", auth, adminOnly, async (req, res) => {
+// Alleen admin mag alle client users zien
+clientUserRouter.get("/", clientAuth, clientAdminOnly, async (req, res) => {
     try {
-        const id = req.params.id
+        const client = await Client.findById(req.clientId);
+        if (!client) {
+            return res.status(404).json({message: "Client not found"});
+        }
+
+        const clientUsers = await ClientUser.find({
+            _id: client.client_user_id
+        });
+
+        const items = clientUsers.map((clientUser) => ({
+            id: clientUser.id,
+            name: clientUser.name,
+            is_admin: clientUser.is_admin
+        }));
+
+        return res.status(200).json({items});
+    } catch (e) {
+        console.log(e);
+        return res.status(500).json({message: "Server error"});
+    }
+});
+
+// Eigen profiel ophalen
+clientUserRouter.get("/:id", clientAuth, async (req, res) => {
+    try {
+        const id = req.params.id;
+
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({message: "id is niet valid"});
         }
 
-        const {
-            name,
-            is_admin,
-        } = req.body;
+        const isOwn = req.clientUserId === id;
+        const isAdmin = req.clientRole === "ADMIN";
 
-        const clientUser = await ClientUser.findById(id)
-
-        if (!name) {
-            return res.status(400).json({message: " these fields cannot be empty"})
-        }
-        const updated = await ClientUser.findByIdAndUpdate(
-            id,
-            {
-                ...(name && {name}),
-                ...(is_admin && {is_admin}),
-            },
-            {new: true, runValidators: true}
-        );
-        if (!updated) {
-            return res.status(404).json({message: "de client user is niet gevonden"})
+        if (!isOwn && !isAdmin) {
+            return res.status(403).json({message: "Forbidden"});
         }
 
-        res.status(200).json(updated)
-    } catch (e) {
-        console.log(e)
-    }
-})
+        const clientUser = await ClientUser.findById(id);
 
-// get all
-clientUserRouter.get("/", async (req, res) => {
-    try {
-
-        const clientUser = await ClientUser.find()
-
-        const items = clientUser.map((clientUser) => ({
-            id: clientUser.id,
-            name: clientUser.name,
-        }));
-        res.json({items})
-    } catch (e) {
-        console.log(e)
-    }
-})
-
-// get met id
-clientUserRouter.get("/:id", auth, async (req, res) => {
-    try {
-
-        const id = req.params.id
-
-        const clientUser = await ClientUser.findById(id)
-
-        if (req.auth.sub !== id) {
-            return res.status(401).json({message: "you can only get your own information"})
-        }
         if (!clientUser) {
-            return res.status(404).json({message: "client user not found"})
+            return res.status(404).json({message: "client user not found"});
         }
-        res.json({clientUser})
+
+        return res.status(200).json({clientUser});
     } catch (e) {
-        console.log(e)
+        console.log(e);
+        return res.status(500).json({message: "Server error"});
     }
-})
-// register for the client user
+});
+
+// Register: maakt client + eerste admin clientUser
 clientUserRouter.post("/register", async (req, res) => {
     try {
-        const {name, password, client_name} = req.body;
+        const name = req.body.name?.trim();
+        const password = req.body.password;
+        const client_name = req.body.client_name?.trim();
 
         if (!name || !password || !client_name) {
             return res.status(400).json({message: "name, password en client_name zijn verplicht"});
+        }
+
+        if (password.length < 8) {
+            return res.status(400).json({message: "Password must be at least 8 characters"});
         }
 
         const existingClientUser = await ClientUser.findOne({name});
@@ -117,7 +105,7 @@ clientUserRouter.post("/register", async (req, res) => {
             return res.status(400).json({message: "Client bestaat al"});
         }
 
-        const passwordHashed = await bcrypt.hash(password, 10);
+        const passwordHashed = await bcrypt.hash(password, 12);
 
         const clientUser = new ClientUser({
             name,
@@ -135,156 +123,168 @@ clientUserRouter.post("/register", async (req, res) => {
 
         await client.save();
 
-        res.status(201).json({
+        return res.status(201).json({
             message: "Client account created",
             clientUser,
             client
         });
     } catch (e) {
         console.log(e);
-        res.status(500).json({message: "Server error"});
+        return res.status(500).json({message: "Server error"});
     }
 });
-// login voor de client user
-clientUserRouter.post("/login", async (req, res) => {
+
+// Login
+clientUserRouter.post("/login", clientLoginLimiter, async (req, res) => {
     try {
-        if (!req.body.password || !req.body.name) {
-            return res.status(400).json({message: "empty field"})
+        const name = req.body.name?.trim();
+        const password = req.body.password;
+
+        if (!name || !password) {
+            return res.status(400).json({message: "empty field"});
         }
 
-        const clientUser = await ClientUser.findOne({name: req.body.name})
+        const clientUser = await ClientUser.findOne({name});
         if (!clientUser) {
-            return res.status(404).json({message: "login information is not correct"})
-        }
-        // checking if password matches
-        const password = req.body.password
-        const is_match = await bcrypt.compare(password, clientUser.password_hash);
-        if (!is_match) {
-            return res.status(401).json({message: "login information is not correct"})
-        }
-// JWT if it's a user login as a user if it's an admin login as an admin
-        if (clientUser.is_admin === 1) {
-            const role = req.header("x-role");
-            const payload = {sub: clientUser.id, role: 'admin'};
-            const secret = process.env.JWT_SECRET;
-            const token = await jwt.sign(payload, secret, {
-                expiresIn: '1h'
-            });
-            return res.status(200).json({message: "login succes", token, clientUser, role})
-        } else {
-            const payload = {sub: clientUser.id, role: 'clientUser'};
-            const role = req.header("x-role");
-            const secret = process.env.JWT_SECRET;
-            const token = await jwt.sign(payload, secret, {
-                expiresIn: '1h'
-            });
-            return res.status(200).json({message: "login succes", token, clientUser, role})
-        }
-    } catch (e) {
-        console.log(e)
-    }
-})
-
-
-// POST  -> maak admin
-clientUserRouter.post("/admin", async (req, res) => {
-    try {
-        const adminExists = await ClientUser.exists({is_admin: true});
-
-        if (adminExists) {
-            const role = req.header("x-role");
-            if (role !== "ADMIN") {
-                return res.status(403).json({message: "Forbidden"});
-            }
+            return res.status(401).json({message: "login information is not correct"});
         }
 
-        const {
-            name,
-            password,
-        } = req.body;
-
-        if (!password) {
-            return res.status(400).json({message: "empty area"});
+        const isMatch = await bcrypt.compare(password, clientUser.password_hash);
+        if (!isMatch) {
+            return res.status(401).json({message: "login information is not correct"});
         }
 
-        const SALT_ROUNDS = 10;
-        const passwordHashed = await bcrypt.hash(password, SALT_ROUNDS);
+        const payload = {
+            sub: clientUser.id,
+            role: clientUser.is_admin ? "ADMIN" : "CLIENT_USER"
+        };
 
-        const adminClientUser = new ClientUser({
-            name,
-            password_hash: passwordHashed,
-            is_admin: true,
+        const token = jwt.sign(payload, process.env.JWT_SECRET, {
+            expiresIn: "1h"
         });
 
-        await adminClientUser.save();
-        return res.status(201).json(adminClientUser);
+        return res.status(200).json({
+            message: "login succes",
+            token,
+            clientUser
+        });
     } catch (e) {
         console.log(e);
         return res.status(500).json({message: "Server error"});
     }
 });
 
-
-// edit voor gewone client user
-clientUserRouter.put("/edit/:id", auth, async (req, res) => {
+// Admin kan andere clientUser aanpassen
+clientUserRouter.put("/admin/edit/:id", clientAuth, clientAdminOnly, async (req, res) => {
     try {
-        const id = req.params.id
+        const id = req.params.id;
 
-        if (req.auth.sub !== id) {
-            return res.status(401).json({message: "you can only edit your own information"})
-        }
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({message: "id is niet valid"});
         }
 
-        const {name} = req.body;
+        const {name, is_admin} = req.body;
+        const update = {};
 
-        if (!name) {
-            return res.status(400).json({message: "these fields cannot be empty"})
+        if (name !== undefined) update.name = name.trim();
+        if (typeof is_admin === "boolean") update.is_admin = is_admin;
+
+        if (Object.keys(update).length === 0) {
+            return res.status(400).json({message: "No valid fields to update"});
         }
 
-        const clientUser = await ClientUser.findById(id)
+        if (update.name) {
+            const exists = await ClientUser.findOne({name: update.name, _id: {$ne: id}});
+            if (exists) {
+                return res.status(400).json({message: "Name already exists"});
+            }
+        }
 
-        const exists = await ClientUser.findOne({name: name})
+        const updated = await ClientUser.findByIdAndUpdate(id, update, {
+            new: true,
+            runValidators: true
+        });
 
-        if (exists && clientUser.name !== exists.name) {
-            return res.status(400).json({message: "Name already exists"})
+        if (!updated) {
+            return res.status(404).json({message: "de client user is niet gevonden"});
+        }
+
+        return res.status(200).json(updated);
+    } catch (e) {
+        console.log(e);
+        return res.status(500).json({message: "Server error"});
+    }
+});
+
+// Eigen naam aanpassen
+clientUserRouter.put("/edit/:id", clientAuth, async (req, res) => {
+    try {
+        const id = req.params.id;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({message: "id is niet valid"});
+        }
+
+        if (req.clientUserId !== id) {
+            return res.status(403).json({message: "you can only edit your own information"});
+        }
+
+        const name = req.body.name?.trim();
+
+        if (!name) {
+            return res.status(400).json({message: "these fields cannot be empty"});
+        }
+
+        const clientUser = await ClientUser.findById(id);
+        if (!clientUser) {
+            return res.status(404).json({message: "de client user is niet gevonden"});
+        }
+
+        const exists = await ClientUser.findOne({name});
+        if (exists && String(exists._id) !== String(clientUser._id)) {
+            return res.status(400).json({message: "Name already exists"});
         }
 
         const updated = await ClientUser.findByIdAndUpdate(
             id,
-            {
-                ...(name && {name}),
-            },
+            {name},
             {new: true, runValidators: true}
         );
-        if (!updated) {
-            return res.status(404).json({message: "de client user is niet gevonden"})
-        }
 
-        res.status(200).json(updated)
+        return res.status(200).json(updated);
     } catch (e) {
-        console.log(e)
-        return res.status(500).json({message: "Server error"})
+        console.log(e);
+        return res.status(500).json({message: "Server error"});
     }
-})
+});
 
-// delete
-clientUserRouter.delete("/delete/:id", auth, async (req, res) => {
+// Eigen account of admin delete
+clientUserRouter.delete("/delete/:id", clientAuth, async (req, res) => {
     try {
-        const id = req.params.id
+        const id = req.params.id;
 
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({message: "id is niet valid"});
         }
-        const deleted = await ClientUser.findByIdAndDelete(id)
+
+        const isOwn = req.clientUserId === id;
+        const isAdmin = req.clientRole === "ADMIN";
+
+        if (!isOwn && !isAdmin) {
+            return res.status(403).json({message: "Forbidden"});
+        }
+
+        const deleted = await ClientUser.findByIdAndDelete(id);
 
         if (!deleted) {
-            return res.status(404).json({message: "client user is niet gevonden"})
+            return res.status(404).json({message: "client user is niet gevonden"});
         }
-        res.status(204).send()
+
+        return res.status(204).send();
     } catch (e) {
-        res.status(500).json({message: "gefaald om te verwijderen"})
+        console.log(e);
+        return res.status(500).json({message: "gefaald om te verwijderen"});
     }
-})
+});
+
 export default clientUserRouter;
