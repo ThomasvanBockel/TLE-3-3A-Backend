@@ -8,16 +8,36 @@ const auditLogSchema = new mongoose.Schema(
         client_id: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Client",
-            required: true
+            required: false,
+            index: true
         },
+        actor_user_id: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: false,
+            index: true
+        },
+        target_type: {type: String, required: false},
+        target_id: {type: String, required: false},
 
-        user_id: {type: mongoose.Schema.Types.ObjectId, ref: "User", required: false},
-        content_id: {type: mongoose.Schema.Types.ObjectId, ref: "ContentItem", required: true},
-        client_id: {type: mongoose.Schema.Types.ObjectId, ref: "Client", required: true},
+        event_type: {type: String, required: true, index: true},
+        status: {
+            type: String,
+            required: true,
+            enum: ["SUCCESS", "FAILURE"],
+            default: "SUCCESS"
+        },
+        request_id: {type: String, required: false, index: true},
+        path: {type: String, required: false},
+        method: {type: String, required: false},
+        ip: {type: String, required: false},
+        user_agent: {type: String, required: false},
 
-        type_request: {type: String, required: true},
+        // Keep the legacy field for compatibility with older consumers.
+        type_request: {type: String, required: false},
         before_state: {type: mongoose.Schema.Types.Mixed, required: false},
         after_state: {type: mongoose.Schema.Types.Mixed, required: false},
+        details: {type: mongoose.Schema.Types.Mixed, required: false},
     },
     {
         timestamps: {createdAt: "created_at", updatedAt: false},
@@ -35,6 +55,8 @@ const auditLogSchema = new mongoose.Schema(
         },
     }
 );
+
+auditLogSchema.index({client_id: 1, event_type: 1, created_at: -1});
 
 const AuditLog = mongoose.model("AuditLog", auditLogSchema);
 export default AuditLog;

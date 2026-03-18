@@ -7,7 +7,9 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "dev": "node --env-file=.env --watch index.js"
+    "dev": "node --env-file=.env --watch index.js",
+    "audit:prod": "npm audit --omit=dev --audit-level=high",
+    "ci:integrity": "npm ci && npm run audit:prod"
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
