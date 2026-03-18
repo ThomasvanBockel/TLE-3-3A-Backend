@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Client Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 700px;
+            margin: 40px auto;
+        }
+
+        form {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        input, button {
+            padding: 10px;
+            font-size: 16px;
+        }
+
+        ul {
+            padding: 0;
+            list-style: none;
+        }
+
+        li {
+            border: 1px solid #ddd;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+
+        .api-key {
+            background: #f3f3f3;
+            padding: 10px;
+            margin: 12px 0;
+        }
+    </style>
+</head>
+<body>
+<h1>Client Dashboard</h1>
+<button id="logoutBtn">Uitloggen</button>
+
+<div id="newKeyBox"></div>
+
+<h2>Nieuwe API key aanvragen</h2>
+<form id="createAppForm">
+    <input type="text" id="appName" placeholder="Naam van app" required/>
+    <button type="submit">Aanmaken</button>
+</form>
+
+<h2>Bestaande apps</h2>
+<ul id="appsList"></ul>
+
+<script>
+    const API_BASE_URL = "http://127.0.0.1:8000/api";
+    const token = localStorage.getItem("clientToken");
+
+    if (!token) {
+        window.location.href = "/login.html";
+    }
+
+    function getHeaders() {
+        return {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "Authorization": `Bearer ${token}`
+        };
+    }
+
+    async function loadApps() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/client-apps`, {
+                method: "GET",
+                headers: getHeaders()
+            });
+
+            const apps = await response.json();
+            const list = document.getElementById("appsList");
+            list.innerHTML = "";
+
+            apps.forEach((app) => {
+                const li = document.createElement("li");
+                li.innerHTML = `
+            <strong>${app.name}</strong><br>
+            Status: ${app.is_active ? "Actief" : "Inactief"}<br><br>
+            <button onclick="toggleApp('${app.id || app._id}')">Toggle</button>
+            <button onclick="deleteApp('${app.id || app._id}')">Verwijderen</button>
+          `;
+                list.appendChild(li);
+            });
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    async function toggleApp(id) {
+        await fetch(`${API_BASE_URL}/client-apps/${id}`, {
+            method: "PATCH",
+            headers: getHeaders()
+        });
+        loadApps();
+    }
+
+    async function deleteApp(id) {
+        await fetch(`${API_BASE_URL}/client-apps/${id}`, {
+            method: "DELETE",
+            headers: getHeaders()
+        });
+        loadApps();
+    }
+
+    document.getElementById("createAppForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const name = document.getElementById("appName").value;
+
+        const response = await fetch(`${API_BASE_URL}/client-apps`, {
+            method: "POST",
+            headers: getHeaders(),
+            body: JSON.stringify({name})
+        });
+
+        const data = await response.json();
+
+        if (data.apiKey) {
+            document.getElementById("newKeyBox").innerHTML = `
+          <div class="api-key">
+            <strong>Nieuwe API key:</strong><br>
+            <code>${data.apiKey}</code>
+          </div>
+        `;
+        }
+
+        document.getElementById("appName").value = "";
+        loadApps();
+    });
+
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+        localStorage.removeItem("clientToken");
+        localStorage.removeItem("clientUser");
+        window.location.href = "/login.html";
+    });
+
+    loadApps();
+</script>
+</body>
+</html>

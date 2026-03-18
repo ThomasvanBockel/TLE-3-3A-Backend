@@ -1,5 +1,6 @@
 import express from "express";
 import ClientUser from "../models/ClientUser.js";
+import Client from "../models/Client.js";
 import bcrypt from "bcrypt"
 import mongoose from "mongoose";
 import jwt from 'jsonwebtoken';
@@ -100,24 +101,50 @@ clientUserRouter.get("/:id", auth, async (req, res) => {
 // register for the client user
 clientUserRouter.post("/register", async (req, res) => {
     try {
-        if (!req.body.name || !req.body.password ) {
-            return res.status(400).json({ message: "Vul alle velden in" })        }
-        // hashing password
-        const password = req.body.password
-        const SALT_ROUNDS = 10
-        const passwordHashed = await bcrypt.hash(password, SALT_ROUNDS);
+        const {name, password, client_name} = req.body;
+
+        if (!name || !password || !client_name) {
+            return res.status(400).json({message: "name, password en client_name zijn verplicht"});
+        }
+
+        const existingClientUser = await ClientUser.findOne({name});
+        if (existingClientUser) {
+            return res.status(400).json({message: "Client user bestaat al"});
+        }
+
+        const existingClient = await Client.findOne({name: client_name});
+        if (existingClient) {
+            return res.status(400).json({message: "Client bestaat al"});
+        }
+
+        const passwordHashed = await bcrypt.hash(password, 10);
 
         const clientUser = new ClientUser({
-            name: req.body.name,
+            name,
             password_hash: passwordHashed,
-            is_admin: req.body.is_admin ?? false,
-        })
-        await clientUser.save()
-        res.status(201).json({message: "account created"})
+            is_admin: true
+        });
+
+        await clientUser.save();
+
+        const client = new Client({
+            name: client_name,
+            is_active: true,
+            client_user_id: clientUser._id
+        });
+
+        await client.save();
+
+        res.status(201).json({
+            message: "Client account created",
+            clientUser,
+            client
+        });
     } catch (e) {
-        console.log(e)
+        console.log(e);
+        res.status(500).json({message: "Server error"});
     }
-})
+});
 // login voor de client user
 clientUserRouter.post("/login", async (req, res) => {
     try {
@@ -198,8 +225,6 @@ clientUserRouter.post("/admin", async (req, res) => {
 });
 
 
-
-
 // edit voor gewone client user
 clientUserRouter.put("/edit/:id", auth, async (req, res) => {
     try {
@@ -212,7 +237,7 @@ clientUserRouter.put("/edit/:id", auth, async (req, res) => {
             return res.status(400).json({message: "id is niet valid"});
         }
 
-        const { name } = req.body;
+        const {name} = req.body;
 
         if (!name) {
             return res.status(400).json({message: "these fields cannot be empty"})

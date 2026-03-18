@@ -1,8 +1,73 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="0; url=/register.html">
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Client Register</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 500px;
+            margin: 40px auto;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        input, button {
+            padding: 10px;
+            font-size: 16px;
+        }
+
+        .message {
+            margin-top: 16px;
+        }
+    </style>
 </head>
-<body></body>
+<body>
+<h1>Client registreren</h1>
+
+<form id="registerForm" method="post">
+    <input type="text" id="name" placeholder="Gebruikersnaam" required/>
+    <input type="text" id="client_name" placeholder="Client naam" required/>
+    <input type="password" id="password" placeholder="Wachtwoord" required/>
+    <button type="submit">Registreren</button>
+</form>
+
+<p><a href="login.html">Al een account? Login</a></p>
+<div class="message" id="message"></div>
+
+<script>
+    const API_BASE_URL = "http://127.0.0.1:8000/api";
+
+    document.getElementById("registerForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const payload = {
+            name: document.getElementById("name").value,
+            client_name: document.getElementById("client_name").value,
+            password: document.getElementById("password").value
+        };
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/client-users/register`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+            document.getElementById("message").textContent = data.message || "Geregistreerd";
+        } catch (error) {
+            document.getElementById("message").textContent = "Er ging iets mis";
+        }
+    });
+</script>
+</body>
 </html>
